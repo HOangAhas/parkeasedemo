@@ -184,6 +184,14 @@
   .empty i{font-size:2.4rem;color:#dcdce6;margin-bottom:12px;display:block}
   .empty p{font-size:.82rem;font-weight:600}
 
+  .route-steps{background:#f7f7fb;border:1px solid var(--line);border-radius:14px;
+    padding:6px 12px;margin-bottom:14px;max-height:150px;overflow-y:auto}
+  .route-step{display:flex;align-items:flex-start;gap:8px;padding:7px 0;font-size:.73rem;line-height:1.35}
+  .route-step + .route-step{border-top:1px solid var(--line)}
+  .route-step i{color:var(--pink);margin-top:2px;font-size:.7rem;flex:0 0 auto;width:14px;text-align:center}
+  .route-step .rs-txt{flex:1;color:var(--ink);font-weight:600}
+  .route-step .rs-dist{color:var(--muted);font-weight:700;font-size:.68rem;white-space:nowrap}
+
   .map-styles{position:absolute;bottom:18px;left:18px;z-index:500;display:flex;gap:4px;
     background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:14px;
     border:1px solid var(--line);box-shadow:0 6px 20px rgba(18,18,28,.12)}
@@ -663,7 +671,7 @@ function renderNavigating(){
           <i class="fa-solid fa-location-dot" style="color:var(--pink);margin-right:4px"></i>${esc(f.addr)}
         </div>
         <div id="routeMeta" style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:.74rem;font-weight:700;color:rgba(255,255,255,.85)">
-          <i class="fa-solid fa-route" style="color:var(--pink)"></i><span>Calculating route…</span>
+          <i class="fa-solid fa-car" style="color:var(--pink)"></i><span>Calculating car route…</span>
         </div>
         ${res ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15);
             display:flex;justify-content:space-between;font-size:.74rem;font-weight:700">
@@ -671,6 +679,8 @@ function renderNavigating(){
             <span style="color:var(--pink)">${fmtVND(res.deposit)} deposit</span>
           </div>` : ''}
       </div>
+
+      <div id="routeSteps" class="route-steps" style="display:none"></div>
 
       <div class="field">
         <label><i class="fa-solid fa-car" style="color:var(--pink)"></i> Confirm plate for gate check-in</label>
@@ -843,8 +853,55 @@ async function doWalkIn(f){
   } catch(e){ toast(e.message, 3000); }
 }
 
+const DEMO_STARTS = {
+  vincom:    [21.0008, 105.8414], // Đường Giải Phóng
+  lotte:     [21.0188, 105.8027], // Đường Láng
+  trangtien: [21.0235, 105.8416], // Đường Lê Duẩn
+  opera:     [21.0175, 105.8548], // Phố Trần Xuân Soạn
+  daewoo:    [21.0192, 105.8100], // Phố Huỳnh Thúc Kháng
+  nhon:      [21.0416, 105.7614], // QL.32 / Đường Cầu Diễn
+};
+
+function decodePolyline6(str){
+  let index = 0, lat = 0, lng = 0;
+  const coords = [];
+  while (index < str.length) {
+    let b, shift = 0, result = 0;
+    do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+    shift = 0; result = 0;
+    do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+    coords.push([lat * 1e-6, lng * 1e-6]);
+  }
+  return coords;
+}
+
+function stepIcon(text){
+  const t = (text || '').toLowerCase();
+  if (t.includes('u-turn')) return 'fa-rotate-left';
+  if (t.includes('arrived') || t.includes('destination')) return 'fa-flag-checkered';
+  if (t.includes('left')) return 'fa-arrow-left';
+  if (t.includes('right')) return 'fa-arrow-right';
+  return 'fa-arrow-up';
+}
+
+function formatOsrmStep(s){
+  const m = s.maneuver || {};
+  const street = s.name ? ` onto ${s.name}` : '';
+  if (m.type === 'arrive') return 'Arrive at destination';
+  if (m.type === 'depart') return s.name ? `Drive on ${s.name}` : 'Start driving';
+  if (m.modifier && m.modifier.includes('uturn')) return `Make a U-turn${street}`;
+  if (m.modifier === 'straight' || m.type === 'new name' || m.type === 'continue') {
+    return s.name ? `Continue on ${s.name}` : 'Continue straight';
+  }
+  const dir = m.modifier ? m.modifier.replace('_', ' ') : '';
+  return `${dir ? 'Turn ' + dir : 'Continue'}${street}`.trim();
+}
+
 async function resolveStartPoint(f){
-  const fallback = { coords:[f.lat - 0.012, f.lng - 0.010], isGps:false };
+  const fallbackCoords = DEMO_STARTS[f.id] || [f.lat - 0.012, f.lng - 0.010];
+  const fallback = { coords: fallbackCoords, isGps:false };
   if (!navigator.geolocation) return fallback;
   try {
     const pos = await new Promise((resolve, reject) =>
@@ -861,20 +918,79 @@ async function resolveStartPoint(f){
   }
 }
 
-async function fetchOsrmRoute(start, end){
+async function fetchValhallaCarRoute(start, end){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), 6000);
+  try {
+    const res = await fetch('https://valhalla1.openstreetmap.de/route', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        locations: [
+          { lat: start[0], lon: start[1] },
+          { lat: end[0], lon: end[1] },
+        ],
+        costing: 'auto',
+        costing_options: {
+          auto: {
+            use_living_streets: 0,
+            use_tracks: 0,
+            alley_factor: 25,
+            service_penalty: 500,
+            service_factor: 5,
+            maneuver_penalty: 20,
+          },
+        },
+        directions_options: { units: 'kilometers', language: 'en-US' },
+      }),
+    });
+    if (!res.ok) throw new Error('Valhalla HTTP ' + res.status);
+    const data = await res.json();
+    const leg = data.trip && data.trip.legs && data.trip.legs[0];
+    if (!leg || !leg.shape) throw new Error('No Valhalla route');
+    const points = decodePolyline6(leg.shape);
+    if (!points.length) throw new Error('Empty shape');
+    const steps = (leg.maneuvers || [])
+      .map(m => ({ text: m.instruction, distanceM: Math.round((m.length || 0) * 1000) }))
+      .filter(s => s.text);
+    return {
+      points,
+      distanceM: Math.round((leg.summary?.length || 0) * 1000),
+      durationS: leg.summary?.time ?? null,
+      steps,
+      label: 'Car route',
+      isFallback: false,
+    };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function fetchCarRoute(start, end){
+  try {
+    return await fetchValhallaCarRoute(start, end);
+  } catch { /* fallback to OSRM driving if Valhalla is unavailable */ }
+
   const ctrl = new AbortController();
   const t = setTimeout(()=>ctrl.abort(), 5000);
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
+    const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson&steps=true`;
     const res = await fetch(url, { signal:ctrl.signal });
     if (!res.ok) throw new Error('OSRM HTTP ' + res.status);
     const data = await res.json();
     const r = data.routes && data.routes[0];
     if (!r || !r.geometry || !r.geometry.coordinates.length) throw new Error('No route');
+    const rawSteps = r.legs && r.legs[0] && r.legs[0].steps ? r.legs[0].steps : [];
+    const steps = rawSteps
+      .map(s => ({ text: formatOsrmStep(s), distanceM: Math.round(s.distance || 0) }))
+      .filter(s => s.text);
     return {
       points: r.geometry.coordinates.map(([lng, lat])=>[lat, lng]),
       distanceM: r.distance,
       durationS: r.duration,
+      steps,
+      label: 'Car fallback',
       isFallback: false,
     };
   } catch {
@@ -882,6 +998,8 @@ async function fetchOsrmRoute(start, end){
       points: [start, end],
       distanceM: map.distance(start, end),
       durationS: null,
+      steps: [],
+      label: 'Direct distance',
       isFallback: true,
     };
   } finally {
@@ -899,7 +1017,7 @@ async function startNavigation(f){
   const { coords: start, isGps } = await resolveStartPoint(f);
   if (seq !== UI.routeSeq) return;
 
-  const route = await fetchOsrmRoute(start, [f.lat, f.lng]);
+  const route = await fetchCarRoute(start, [f.lat, f.lng]);
   if (seq !== UI.routeSeq) return;
 
   const dash = route.isFallback ? '10 8' : undefined;
@@ -907,7 +1025,7 @@ async function startNavigation(f){
   const line = L.polyline(route.points, { color:'#ff2e73', weight:5, opacity:.95, dashArray:dash });
   const startDot = L.circleMarker(start, {
     radius:7, color:'#ffffff', weight:3, fillColor:'#12121c', fillOpacity:1,
-  }).bindTooltip(isGps ? 'Your location' : 'Demo start');
+  }).bindTooltip(isGps ? 'Your location' : 'Car start (Demo)');
 
   UI.routeLayer = L.layerGroup([casing, line, startDot]).addTo(map);
   map.fitBounds(line.getBounds(), { padding:[70,70] });
@@ -916,7 +1034,17 @@ async function startNavigation(f){
   if (metaEl){
     const eta = route.durationS != null ? ` · ~${Math.max(1, Math.round(route.durationS / 60))} min` : '';
     const src = isGps ? 'GPS' : 'Demo start';
-    metaEl.innerHTML = `<i class="fa-solid fa-route" style="color:var(--pink)"></i><span>${fmtDistance(route.distanceM)}${eta} (${src})</span>`;
+    metaEl.innerHTML = `<i class="fa-solid fa-car" style="color:var(--pink)"></i><span>${esc(route.label)} · ${fmtDistance(route.distanceM)}${eta} (${src})</span>`;
+  }
+  const stepsEl = document.getElementById('routeSteps');
+  if (stepsEl && route.steps && route.steps.length){
+    stepsEl.style.display = 'block';
+    stepsEl.innerHTML = route.steps.map(s => `
+      <div class="route-step">
+        <i class="fa-solid ${stepIcon(s.text)}"></i>
+        <span class="rs-txt">${esc(s.text)}</span>
+        ${s.distanceM > 0 ? `<span class="rs-dist">${fmtDistance(s.distanceM)}</span>` : ''}
+      </div>`).join('');
   }
 }
 

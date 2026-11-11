@@ -25,7 +25,7 @@ const FACILITIES = [
     lat:21.0245, lng:105.8528, total:80, avail:5, type:'surface', ev:false,
     hours:'07:00–22:00', rate:25000, cap:140000 },
   { id:'nhon',    name:'Nhổn Metro Park & Ride', addr:'Quốc lộ 32, Bắc Từ Liêm, Hà Nội',
-    lat:21.0535, lng:105.7614, total:300, avail:210, type:'surface', ev:true,
+    lat:21.0532, lng:105.7345, total:300, avail:210, type:'surface', ev:true,
     hours:'05:00–24:00', rate:10000, cap:60000 },
   { id:'opera',   name:'Hanoi Opera House Curbside', addr:'01 Tràng Tiền, Hoàn Kiếm, Hà Nội',
     lat:21.0240, lng:105.8578, total:40, avail:12, type:'curbside', ev:false,
