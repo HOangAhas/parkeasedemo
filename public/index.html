@@ -48,14 +48,20 @@
 
   .pin{display:inline-flex;align-items:center;gap:6px;width:max-content;background:#fff;
     border-radius:30px;padding:6px 11px;font-weight:800;font-size:.73rem;color:var(--ink);
-    white-space:nowrap;box-shadow:0 4px 16px rgba(18,18,28,.18);
-    border:1.5px solid rgba(18,18,28,.08);transform:translate(-50%,-50%);transition:transform .15s}
+    white-space:nowrap;box-shadow:0 4px 16px rgba(18,18,28,.22);
+    border:1.5px solid rgba(18,18,28,.08);transform:translate(-50%,-50%);transition:transform .15s,background .15s,color .15s}
   .leaflet-marker-icon:hover{z-index:1000!important}
   .leaflet-marker-icon:hover .pin{transform:translate(-50%,-50%) scale(1.06)}
   .pin .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .pin .ev-ico{color:var(--pink);font-size:.66rem}
   .pin.green .dot{background:var(--green)}
   .pin.amber .dot{background:var(--amber)}
   .pin.red .dot{background:var(--red)}
+  .pin.selected{background:var(--pink);color:#fff;border-color:#fff;
+    box-shadow:0 8px 24px var(--pink-glow);transform:translate(-50%,-50%) scale(1.08)}
+  .pin.selected .dot{background:#fff}
+  .pin.selected .ev-ico{color:#fff}
+  .leaflet-marker-icon:hover .pin.selected{transform:translate(-50%,-50%) scale(1.11)}
 
   .sidebar{background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column;
     overflow-y:auto;padding:24px;position:relative}
@@ -177,6 +183,32 @@
   .empty{text-align:center;padding:40px 10px;color:var(--muted)}
   .empty i{font-size:2.4rem;color:#dcdce6;margin-bottom:12px;display:block}
   .empty p{font-size:.82rem;font-weight:600}
+
+  .map-styles{position:absolute;bottom:18px;left:18px;z-index:500;display:flex;gap:4px;
+    background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:14px;
+    border:1px solid var(--line);box-shadow:0 6px 20px rgba(18,18,28,.12)}
+  .style-btn{border:none;background:transparent;padding:7px 11px;border-radius:10px;
+    font-size:.73rem;font-weight:700;color:#4a5066;cursor:pointer;display:flex;align-items:center;
+    gap:5px;transition:.15s;white-space:nowrap}
+  .style-btn:hover{background:#f2f3f8;color:var(--ink)}
+  .style-btn i{font-size:.7rem;color:#8b90a3}
+  .style-btn.active{background:var(--ink);color:#fff}
+  .style-btn.active i{color:var(--pink)}
+
+  .map-ctrls{position:absolute;bottom:28px;right:18px;z-index:500;display:flex;flex-direction:column;
+    background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-radius:14px;
+    border:1px solid var(--line);box-shadow:0 6px 20px rgba(18,18,28,.12);overflow:hidden}
+  .map-ctrl{width:36px;height:36px;border:none;background:transparent;color:var(--ink);
+    cursor:pointer;display:grid;place-items:center;font-size:.82rem;transition:.15s}
+  .map-ctrl:hover:not(:disabled){background:#f2f3f8;color:var(--pink)}
+  .map-ctrl:disabled{opacity:.55;cursor:wait}
+  .map-ctrl + .map-ctrl{border-top:1px solid var(--line)}
+  @media(max-width:900px){
+    .map-styles{bottom:10px;left:10px;gap:2px;padding:3px;border-radius:12px}
+    .style-btn{padding:5px 8px;font-size:.66rem;gap:4px}
+    .map-ctrls{bottom:22px;right:10px;border-radius:12px}
+    .map-ctrl{width:32px;height:32px;font-size:.76rem}
+  }
   .leaflet-control-attribution{font-size:7px!important;opacity:.6!important}
 </style>
 </head>
@@ -199,6 +231,16 @@
           <div class="chip" data-filter="curbside"><i class="fa-solid fa-road"></i>Curbside</div>
         </div>
       </div>
+    </div>
+    <div class="map-styles" id="mapStyles" role="group" aria-label="Map style">
+      <button type="button" class="style-btn active" data-style="liberty"><i class="fa-solid fa-map"></i>Street</button>
+      <button type="button" class="style-btn" data-style="positron"><i class="fa-solid fa-sun"></i>Light</button>
+      <button type="button" class="style-btn" data-style="satellite"><i class="fa-solid fa-satellite"></i>Satellite</button>
+    </div>
+    <div class="map-ctrls" role="group" aria-label="Map controls">
+      <button type="button" class="map-ctrl" id="zoomInBtn" title="Zoom in" aria-label="Zoom in"><i class="fa-solid fa-plus"></i></button>
+      <button type="button" class="map-ctrl" id="zoomOutBtn" title="Zoom out" aria-label="Zoom out"><i class="fa-solid fa-minus"></i></button>
+      <button type="button" class="map-ctrl" id="locateBtn" title="My location / Hanoi center" aria-label="My location or Hanoi center"><i class="fa-solid fa-location-crosshairs"></i></button>
     </div>
   </div>
 
@@ -320,17 +362,52 @@ async function api(path, opts={}){
 }
 
 /* ---------- map ---------- */
-const map = L.map('map', { zoomControl:false }).setView([21.0285, 105.8542], 13.4);
-try {
-  L.maplibreGL({
-    style: 'https://tiles.openfreemap.org/styles/positron',
-  }).addTo(map);
-} catch {
-  L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">HOT</a>',
-    maxZoom:19,
-  }).addTo(map);
+const HANOI_CENTER = [21.0285, 105.8542];
+const HANOI_ZOOM = 13.4;
+const OFM_ATTR = '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
+const MAP_STYLES = {
+  liberty:   { type:'vector', url:'https://tiles.openfreemap.org/styles/liberty' },
+  positron:  { type:'vector', url:'https://tiles.openfreemap.org/styles/positron' },
+  satellite: {
+    type:'raster',
+    url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attr:'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
+  },
+};
+
+const map = L.map('map', { zoomControl:false }).setView(HANOI_CENTER, HANOI_ZOOM);
+let baseLayer = null;
+let userDot = null;
+let currentStyle = 'liberty';
+
+function setMapStyle(key){
+  if (!MAP_STYLES[key] || (key === currentStyle && baseLayer)) return;
+  if (baseLayer) map.removeLayer(baseLayer);
+  const cfg = MAP_STYLES[key];
+  if (cfg.type === 'vector') {
+    try {
+      baseLayer = L.maplibreGL({
+        style: cfg.url,
+        attributionControl: { customAttribution: OFM_ATTR },
+      }).addTo(map);
+    } catch {
+      baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+        attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">HOT</a>',
+        maxZoom:19,
+      }).addTo(map);
+    }
+  } else {
+    baseLayer = L.tileLayer(cfg.url, { attribution: cfg.attr, maxZoom: 19 }).addTo(map);
+  }
+  currentStyle = key;
+  const wrap = document.getElementById('mapStyles');
+  if (wrap) {
+    wrap.querySelectorAll('.style-btn').forEach(btn=>{
+      btn.classList.toggle('active', btn.dataset.style === key);
+    });
+  }
 }
+setMapStyle('liberty');
 
 const markers = {};
 window.addEventListener('resize', ()=>map.invalidateSize());
@@ -341,7 +418,7 @@ async function loadFacilities(){
     UI.facilitiesRaw = data.facilities;
     UI.peak = data.peak;
     UI.facilities = filterList(data.facilities);
-    syncMarkers(data.facilities);
+    syncMarkers(UI.facilities);
     if (UI.mode === 'browse') renderPanel();
   } catch(e){
     toast('Cannot reach backend: ' + e.message, 4000);
@@ -359,25 +436,37 @@ function filterList(list){
 
 function makePinIcon(f){
   const cls = pinClass(f);
-  const html = `<div class="pin ${cls}"><span class="dot"></span>${f.avail} / ${f.total}</div>`;
+  const sel = f.id === UI.facilityId ? ' selected' : '';
+  const ev = f.ev ? '<i class="fa-solid fa-bolt ev-ico"></i>' : '';
+  const html = `<div class="pin ${cls}${sel}"><span class="dot"></span>${ev}${f.avail} / ${f.total}</div>`;
   return L.divIcon({ className:'', html, iconSize:[0,0], iconAnchor:[0,0] });
 }
 
-function syncMarkers(all){
-  all.forEach(f=>{
+function syncMarkers(visible){
+  const showIds = new Set((visible || []).map(f => f.id));
+  if (UI.facilityId) showIds.add(UI.facilityId);
+  UI.facilitiesRaw.forEach(f=>{
+    const selected = f.id === UI.facilityId;
     const icon = makePinIcon(f);
-    if (markers[f.id]) {
-      markers[f.id].setIcon(icon);
-    } else {
-      const m = L.marker([f.lat, f.lng], { icon }).addTo(map);
+    let m = markers[f.id];
+    if (!m) {
+      m = L.marker([f.lat, f.lng], { icon });
       m.on('click', ()=>selectFacility(f.id));
       markers[f.id] = m;
+    } else {
+      m.setIcon(icon);
     }
+    m.setZIndexOffset(selected ? 900 : 0);
+    const shouldShow = showIds.has(f.id);
+    const onMap = map.hasLayer(m);
+    if (shouldShow && !onMap) m.addTo(map);
+    else if (!shouldShow && onMap) map.removeLayer(m);
   });
 }
 
 /* ---------- panel renderers ---------- */
 function renderPanel(){
+  if (UI.facilitiesRaw.length) syncMarkers(UI.facilities);
   if (UI.mode === 'browse') return renderBrowse();
   if (UI.mode === 'facility') return renderFacility();
   if (UI.mode === 'navigating') return renderNavigating();
@@ -926,11 +1015,51 @@ chipsEl.addEventListener('click', e=>{
   UI.filter = c.dataset.filter;
   UI.facilities = filterList(UI.facilitiesRaw);
   if (UI.mode === 'browse') renderPanel();
+  else syncMarkers(UI.facilities);
 });
 searchEl.addEventListener('input', ()=>{
   UI.search = searchEl.value.trim();
   UI.facilities = filterList(UI.facilitiesRaw);
   if (UI.mode === 'browse') renderPanel();
+  else syncMarkers(UI.facilities);
+});
+
+const mapStylesEl = document.getElementById('mapStyles');
+if (mapStylesEl) {
+  mapStylesEl.addEventListener('click', e=>{
+    const btn = e.target.closest('.style-btn');
+    if (btn) setMapStyle(btn.dataset.style);
+  });
+}
+document.getElementById('zoomInBtn').addEventListener('click', ()=>map.zoomIn());
+document.getElementById('zoomOutBtn').addEventListener('click', ()=>map.zoomOut());
+const locateBtn = document.getElementById('locateBtn');
+locateBtn.addEventListener('click', async ()=>{
+  locateBtn.disabled = true;
+  try {
+    if (!navigator.geolocation) throw new Error('no-geo');
+    const pos = await new Promise((resolve, reject) =>
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy:true, timeout:3000, maximumAge:60_000,
+      })
+    );
+    const coords = [pos.coords.latitude, pos.coords.longitude];
+    if (map.distance(coords, HANOI_CENTER) > 50_000) throw new Error('outside-hanoi');
+    if (!userDot) {
+      userDot = L.circleMarker(coords, {
+        radius:7, color:'#ffffff', weight:3, fillColor:'#2563eb', fillOpacity:1,
+      }).addTo(map).bindTooltip('Your location');
+    } else {
+      userDot.setLatLng(coords);
+    }
+    map.flyTo(coords, 15, { duration:.7 });
+    toast('Centered on your location');
+  } catch {
+    map.flyTo(HANOI_CENTER, HANOI_ZOOM, { duration:.6 });
+    toast('Centered on Hanoi');
+  } finally {
+    locateBtn.disabled = false;
+  }
 });
 
 async function restoreState(){
