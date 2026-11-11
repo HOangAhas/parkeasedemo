@@ -192,6 +192,15 @@
   .route-step .rs-txt{flex:1;color:var(--ink);font-weight:600}
   .route-step .rs-dist{color:var(--muted);font-weight:700;font-size:.68rem;white-space:nowrap}
 
+  .resume-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:linear-gradient(135deg,#12121c,#2a1030);color:#fff;border-radius:14px;
+    padding:12px 14px;margin-bottom:14px;cursor:pointer;box-shadow:0 6px 18px rgba(18,18,28,.16);
+    transition:transform .12s}
+  .resume-bar:hover{transform:translateY(-1px)}
+  .resume-bar b{display:block;font-size:.82rem;font-weight:800}
+  .resume-bar small{display:block;font-size:.69rem;color:rgba(255,255,255,.72);margin-top:2px}
+  .resume-bar span{font-size:.73rem;font-weight:800;color:var(--pink);white-space:nowrap}
+
   .map-styles{position:absolute;bottom:18px;left:18px;z-index:500;display:flex;gap:4px;
     background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:14px;
     border:1px solid var(--line);box-shadow:0 6px 20px rgba(18,18,28,.12)}
@@ -474,6 +483,7 @@ function syncMarkers(visible){
 
 /* ---------- panel renderers ---------- */
 function renderPanel(){
+  if (UI.mode !== 'session' && UI.mode !== 'navigating') stopTicker();
   if (UI.facilitiesRaw.length) syncMarkers(UI.facilities);
   if (UI.mode === 'browse') return renderBrowse();
   if (UI.mode === 'facility') return renderFacility();
@@ -482,10 +492,46 @@ function renderPanel(){
   if (UI.mode === 'checkout') return renderCheckout();
 }
 
+function activeBannerHTML(){
+  if (UI.session && UI.mode !== 'session' && UI.mode !== 'checkout') {
+    return `<div class="resume-bar" data-act="resume-active">
+      <div><b>Active session · Bay ${esc(UI.session.bay)}</b><small>${esc(UI.session.facilityName)} · ${esc(UI.session.plate)}</small></div>
+      <span>Resume <i class="fa-solid fa-arrow-right"></i></span>
+    </div>`;
+  }
+  if (UI.reservation && UI.reservation.status === 'held' && serverNow() < UI.reservation.expiresAt && UI.mode !== 'navigating') {
+    return `<div class="resume-bar" data-act="resume-active">
+      <div><b>Bay held · ${esc(UI.reservation.facilityName)}</b><small>${esc(UI.reservation.plate)} · ${UI.reservation.hours}h</small></div>
+      <span>Directions <i class="fa-solid fa-arrow-right"></i></span>
+    </div>`;
+  }
+  return '';
+}
+
+function wireActiveBanner(){
+  const el = panelEl.querySelector('[data-act="resume-active"]');
+  if (!el) return;
+  el.addEventListener('click', ()=>{
+    if (UI.session) {
+      UI.facilityId = UI.session.facilityId;
+      UI.mode = 'session';
+      const f = UI.facilitiesRaw.find(x => x.id === UI.session.facilityId);
+      if (f) map.flyTo([f.lat, f.lng], 15.5, { duration:.6 });
+      renderPanel();
+      return;
+    }
+    if (UI.reservation) {
+      const f = UI.facilitiesRaw.find(x => x.id === UI.reservation.facilityId);
+      if (f) startNavigation(f);
+    }
+  });
+}
+
 function renderBrowse(){
   const list = UI.facilities;
   panelEl.innerHTML = `
     <div class="panel">
+      ${activeBannerHTML()}
       <p style="font-size:.72rem;font-weight:800;text-transform:uppercase;
           letter-spacing:.07em;color:var(--muted);margin-bottom:12px">
         ${list.length} parking stops nearby
@@ -515,6 +561,7 @@ function renderBrowse(){
           </div>`;
       }).join('') : `<div class="empty"><i class="fa-solid fa-parking"></i><p>No stops match your filter.</p></div>`}
     </div>`;
+  wireActiveBanner();
   panelEl.querySelectorAll('.stop-card').forEach(el=>{
     el.addEventListener('click', ()=>selectFacility(el.dataset.fid));
   });
@@ -527,6 +574,7 @@ function renderFacility(){
   const label = cls==='green'?'Available':cls==='amber'?'Limited':'Almost full';
   panelEl.innerHTML = `
     <div class="panel">
+      ${activeBannerHTML()}
       <button class="btn btn-ghost" data-act="back" style="margin-bottom:16px;font-size:.82rem;padding:10px">
         <i class="fa-solid fa-arrow-left"></i> Back to map
       </button>
@@ -568,11 +616,12 @@ function renderFacility(){
       <div class="divider"></div>
       <button class="btn btn-primary" data-act="reserve"><i class="fa-solid fa-lock"></i>Reserve this bay</button>
       <button class="btn btn-dark" data-act="walkin" style="margin-top:10px">
-        <i class="fa-solid fa-person-walking"></i>Walk in (no reservation)
+        <i class="fa-solid fa-car-side"></i>Drive in now (no reservation)
       </button>
       <p class="hint">Hold for 30 min · convert to active session on arrival</p>
     </div>`;
 
+  wireActiveBanner();
   wireWheel(f);
   panelEl.querySelector('#plateInput').addEventListener('input', e=>{
     UI.plate = e.target.value.trim().toUpperCase();
@@ -674,8 +723,8 @@ function renderNavigating(){
           <i class="fa-solid fa-car" style="color:var(--pink)"></i><span>Calculating car route…</span>
         </div>
         ${res ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15);
-            display:flex;justify-content:space-between;font-size:.74rem;font-weight:700">
-            <span>Bay held · ${res.hours}h</span>
+            display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.74rem;font-weight:700">
+            <span>Hold ${res.hours}h · <b id="holdTimer" style="color:#fff">--:--</b> left</span>
             <span style="color:var(--pink)">${fmtVND(res.deposit)} deposit</span>
           </div>` : ''}
       </div>
@@ -694,15 +743,21 @@ function renderNavigating(){
         <i class="fa-solid fa-diamond-turn-right"></i>Open in Google Maps
       </a>
       <button class="btn btn-ghost" data-act="back" style="margin-top:10px">
-        <i class="fa-solid fa-arrow-left"></i>Back
+        <i class="fa-solid fa-arrow-left"></i>Back to map
       </button>
+      ${res ? `<button class="btn btn-ghost" data-act="cancel-hold" style="margin-top:8px;color:var(--red);border-color:rgba(226,65,59,.25)">
+        <i class="fa-solid fa-xmark"></i>Cancel reservation
+      </button>` : ''}
     </div>`;
 
   panelEl.querySelector('[data-act="back"]').addEventListener('click', ()=>goBrowse());
+  const cancelBtn = panelEl.querySelector('[data-act="cancel-hold"]');
+  if (cancelBtn) cancelBtn.addEventListener('click', cancelHold);
   panelEl.querySelector('[data-act="checkin"]').addEventListener('click', ()=>{
     if (!readPlateInput('checkinPlate')) return;
     doCheckIn();
   });
+  if (res) startHoldTicker();
 }
 
 function renderSession(){
@@ -725,7 +780,8 @@ function renderSession(){
       <div class="kv"><span>Facility</span><strong style="text-align:right;max-width:60%">${esc(s.facilityName)}</strong></div>
       <div class="kv"><span>Plate</span><strong>${esc(s.plate)}</strong></div>
       <div class="kv"><span>Deposit credit</span><strong>${fmtVND(s.deposit)}</strong></div>
-      <div class="kv"><span>Extended</span><strong>${fmtDuration(s.extendedMs/3600000)}</strong></div>
+      <div class="kv"><span>Planned stay</span><strong>${fmtDuration((s.plannedHours || 0) + (s.extendedMs || 0)/3_600_000)}</strong></div>
+      <div class="kv"><span>Extended</span><strong>+${fmtDuration((s.extendedMs || 0)/3_600_000)}</strong></div>
     </div>`;
 
   panelEl.querySelector('[data-act="extend"]').addEventListener('click', async ()=>{
@@ -733,7 +789,7 @@ function renderSession(){
       UI.session = await api(`/api/sessions/${UI.session.id}/extend`, {
         method:'POST', body:{ minutes:30 },
       });
-      toast('+30 min added');
+      toast('+30 min window extended');
       renderSession();
     } catch(e){ toast(e.message); }
   });
@@ -745,8 +801,11 @@ function renderSession(){
 function renderCheckout(){
   const s = UI.session;
   if (!s) { UI.mode='browse'; return renderBrowse(); }
-  const elapsedMs = Math.max(0, serverNow() - s.startTs + s.extendedMs);
+  const elapsedMs = Math.max(0, serverNow() - s.startTs);
   const elapsedHours = Math.max(0.5, elapsedMs / 3_600_000);
+  const mult = UI.peak ? 1.5 : 0.7;
+  const estTotal = Math.min(Math.round(elapsedHours * s.rate * mult), s.cap);
+  const estDue = Math.max(0, estTotal - s.deposit);
   // preview (server is source of truth on submit)
   panelEl.innerHTML = `
     <div class="panel">
@@ -757,7 +816,9 @@ function renderCheckout(){
       <p class="hint" style="text-align:left;margin:0 0 16px">Decree 123/2020/NĐ-CP e-invoice auto-issued on payment.</p>
 
       <div class="kv"><span>Duration</span><strong>${fmtDuration(elapsedHours)}</strong></div>
+      <div class="kv"><span>Estimated total</span><strong>${fmtVND(estTotal)}</strong></div>
       <div class="kv"><span>Deposit credit</span><strong>−${fmtVND(s.deposit)}</strong></div>
+      <div class="kv total"><span>Estimated due</span><strong>${fmtVND(estDue)}</strong></div>
 
       <div class="divider"></div>
       <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;
@@ -812,12 +873,40 @@ function goBrowse(){
   clearRoute();
   UI.mode = 'browse';
   UI.facilityId = null;
-  if (!UI.session) {
+  if (UI.reservation && serverNow() >= UI.reservation.expiresAt) {
     UI.reservation = null;
     saveLocalState();
   }
-  map.flyTo([21.0285,105.8542], 13.4, { duration:.6 });
+  map.flyTo(HANOI_CENTER, HANOI_ZOOM, { duration:.6 });
   renderPanel();
+}
+
+async function cancelHold(){
+  const id = UI.reservation && UI.reservation.id;
+  UI.reservation = null;
+  saveLocalState();
+  if (id) {
+    try { await api(`/api/reservations/${id}`, { method:'DELETE' }); } catch {}
+  }
+  toast('Reservation cancelled');
+  clearRoute();
+  UI.mode = 'browse';
+  UI.facilityId = null;
+  map.flyTo(HANOI_CENTER, HANOI_ZOOM, { duration:.6 });
+  loadFacilities();
+}
+
+async function createReservation(f, plate){
+  if (UI.session) throw new Error('Finish active session first');
+  if (UI.reservation && UI.reservation.status === 'held') {
+    const oldId = UI.reservation.id;
+    UI.reservation = null;
+    try { await api(`/api/reservations/${oldId}`, { method:'DELETE' }); } catch {}
+  }
+  return api('/api/reservations', {
+    method:'POST',
+    body: { facilityId: f.id, hours: UI.hours, plate },
+  });
 }
 
 async function doReserve(f){
@@ -825,13 +914,10 @@ async function doReserve(f){
   if (!plate) return;
   try {
     toast('Holding bay…', 1000);
-    const res = await api('/api/reservations', {
-      method:'POST',
-      body: { facilityId: f.id, hours: UI.hours, plate },
-    });
-    UI.reservation = res;
+    UI.reservation = await createReservation(f, plate);
     saveLocalState();
     toast('Bay held for 30 min');
+    loadFacilities();
     startNavigation(f);
   } catch(e){
     toast(e.message, 3000);
@@ -841,13 +927,8 @@ async function doWalkIn(f){
   const plate = readPlateInput('plateInput');
   if (!plate) return;
   try {
-    // walk-in: create a short hold and immediately convert
-    toast('Setting up walk-in…', 900);
-    const res = await api('/api/reservations', {
-      method:'POST',
-      body: { facilityId: f.id, hours: UI.hours, plate },
-    });
-    UI.reservation = res;
+    toast('Checking in at gate…', 900);
+    UI.reservation = await createReservation(f, plate);
     saveLocalState();
     doCheckIn();
   } catch(e){ toast(e.message, 3000); }
@@ -1062,6 +1143,7 @@ async function doCheckIn(){
     toast('Session started · Bay ' + session.bay);
     UI.mode = 'session';
     renderPanel();
+    loadFacilities();
   } catch(e){ toast(e.message, 3000); }
 }
 
@@ -1080,6 +1162,7 @@ async function doPay(){
     UI.session = null;
     UI.reservation = null;
     saveLocalState();
+    loadFacilities();
 
     modalCard.innerHTML = `
       <h3>Payment successful</h3>
@@ -1104,7 +1187,7 @@ async function doPay(){
       modal.classList.remove('show');
       UI.mode = 'browse';
       UI.facilityId = null;
-      loadFacilities();
+      renderPanel();
     });
   } catch(e){ toast(e.message, 3000); }
 }
@@ -1118,7 +1201,7 @@ function startTicker(){
     const c = document.getElementById('liveCost');
     if (!el || !UI.session) return stopTicker();
     const s = UI.session;
-    const ms = Math.max(0, serverNow() - s.startTs + s.extendedMs);
+    const ms = Math.max(0, serverNow() - s.startTs);
     el.textContent = fmtClock(ms);
     if (c){
       const hours = Math.max(0.5, ms/3_600_000);
@@ -1128,6 +1211,35 @@ function startTicker(){
       const total = Math.min(Math.round(hours*rate*mult), cap);
       c.textContent = fmtVND(Math.max(0, total - s.deposit)) + ' due';
     }
+  };
+  tick();
+  UI.tickTimer = setInterval(tick, 500);
+}
+
+function startHoldTicker(){
+  stopTicker();
+  if (!UI.reservation) return;
+  const fmtMMSS = ms => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  };
+  const tick = ()=>{
+    const el = document.getElementById('holdTimer');
+    if (!el || !UI.reservation) return stopTicker();
+    const rem = UI.reservation.expiresAt - serverNow();
+    if (rem <= 0) {
+      el.textContent = '00:00';
+      el.style.color = '#ff7b7b';
+      stopTicker();
+      UI.reservation = null;
+      saveLocalState();
+      const chk = panelEl.querySelector('[data-act="checkin"]');
+      if (chk) chk.disabled = true;
+      toast('Reservation hold expired', 3500);
+      loadFacilities();
+      return;
+    }
+    el.textContent = fmtMMSS(rem);
   };
   tick();
   UI.tickTimer = setInterval(tick, 500);

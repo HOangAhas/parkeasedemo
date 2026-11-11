@@ -90,21 +90,25 @@ const rid = (prefix) => prefix + '_' + Math.random().toString(36).slice(2, 10);
 const findFacility = id => FACILITIES.find(f => f.id === id);
 const PLATE_RE = /^[0-9A-Za-z\-\.]{6,12}$/;
 
+function availFor(db, f, now = Date.now()){
+  const held = Object.values(db.reservations)
+    .filter(r => r.facilityId === f.id && r.status === 'held' && r.expiresAt > now).length;
+  const active = Object.values(db.sessions)
+    .filter(s => s.facilityId === f.id).length;
+  return Math.max(0, f.avail - held - active);
+}
+
 /* ============================================================
    ROUTES
    ============================================================ */
 
-/* List facilities (with live-ish availability) */
+/* List facilities (real remaining bays after active holds & sessions) */
 app.get('/api/facilities', async (req, res) => {
   await sleep(jitter(80, 200));
   const db = loadDB();
-  // simulate occupancy drift so "live" feels alive
-  const list = FACILITIES.map(f => {
-    const drift = Math.floor(Math.random() * 5) - 2;
-    const avail = Math.max(0, Math.min(f.total, f.avail + drift));
-    return { ...f, avail };
-  });
-  res.json({ facilities: list, peak: isPeak(), serverTime: Date.now() });
+  const now = Date.now();
+  const list = FACILITIES.map(f => ({ ...f, avail: availFor(db, f, now) }));
+  res.json({ facilities: list, peak: isPeak(), serverTime: now });
 });
 
 /* Get single facility */
@@ -112,7 +116,9 @@ app.get('/api/facilities/:id', async (req, res) => {
   await sleep(jitter(60, 160));
   const f = findFacility(req.params.id);
   if (!f) return res.status(404).json({ error: 'Not found' });
-  res.json({ ...f, peak: isPeak() });
+  const db = loadDB();
+  const now = Date.now();
+  res.json({ ...f, avail: availFor(db, f, now), peak: isPeak(), serverTime: now });
 });
 
 /* Quote: price for X hours at facility Y */
@@ -145,12 +151,12 @@ app.post('/api/reservations', async (req, res) => {
   if (!PLATE_RE.test(cleanPlate))
     return res.status(400).json({ error: 'Invalid plate format' });
 
-  // simulate 10% "bay just got taken"
-  if (Math.random() < 0.1) {
-    return res.status(409).json({ error: 'Bay just got taken — try again' });
+  const now = Date.now();
+  const db = loadDB();
+  if (availFor(db, f, now) <= 0) {
+    return res.status(409).json({ error: 'No free bays at this facility right now' });
   }
 
-  const now = Date.now();
   const total = priceFor(f, hours);
   const resv = {
     id: rid('res'),
@@ -165,7 +171,6 @@ app.post('/api/reservations', async (req, res) => {
     expiresAt: now + 30 * 60 * 1000,
   };
 
-  const db = loadDB();
   db.reservations[resv.id] = resv;
   saveDB(db);
 
@@ -178,8 +183,10 @@ app.delete('/api/reservations/:id', async (req, res) => {
   const db = loadDB();
   const r = db.reservations[req.params.id];
   if (!r) return res.status(404).json({ error: 'Reservation not found' });
-  r.status = 'cancelled';
-  saveDB(db);
+  if (r.status === 'held') {
+    r.status = 'cancelled';
+    saveDB(db);
+  }
   res.json({ ok: true });
 });
 
@@ -251,11 +258,15 @@ app.get('/api/sessions/:id', async (req, res) => {
 /* Extend session (+30 min or custom minutes) */
 app.post('/api/sessions/:id/extend', async (req, res) => {
   await sleep(jitter(80, 200));
-  const { minutes = 30 } = req.body || {};
+  const rawMin = (req.body || {}).minutes;
+  const minutes = rawMin === undefined ? 30 : Number(rawMin);
+  if (!Number.isFinite(minutes) || minutes < 15 || minutes > 240) {
+    return res.status(400).json({ error: 'Extension must be 15–240 minutes' });
+  }
   const db = loadDB();
   const s = db.sessions[req.params.id];
   if (!s) return res.status(404).json({ error: 'Session not found' });
-  s.extendedMs += minutes * 60 * 1000;
+  s.extendedMs += Math.round(minutes) * 60 * 1000;
   saveDB(db);
   res.json({ ...s, serverTime: Date.now() });
 });
@@ -268,7 +279,7 @@ app.post('/api/sessions/:id/checkout', async (req, res) => {
   const s = db.sessions[req.params.id];
   if (!s) return res.status(404).json({ error: 'Session not found' });
 
-  const elapsedMs = Date.now() - s.startTs + s.extendedMs;
+  const elapsedMs = Math.max(0, Date.now() - s.startTs);
   const elapsedHours = Math.max(0.5, elapsedMs / 3_600_000);
   const total = priceFor({ rate:s.rate, cap:s.cap }, elapsedHours);
   const final = Math.max(0, total - s.deposit);
