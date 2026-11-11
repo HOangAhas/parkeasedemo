@@ -70,6 +70,11 @@
     display:flex;align-items:center;justify-content:center;font-size:1rem;box-shadow:0 6px 18px var(--pink-glow)}
   .brand h1{font-size:1.1rem;font-weight:800;letter-spacing:-.02em}
   .brand small{display:block;font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+  .lang-switch{margin-left:auto;display:flex;background:var(--bg);border:1px solid var(--line);
+    border-radius:10px;padding:2px;gap:2px}
+  .lang-btn{border:none;background:transparent;padding:4px 8px;border-radius:8px;
+    font-size:.66rem;font-weight:800;color:var(--muted);cursor:pointer;transition:.15s}
+  .lang-btn.active{background:var(--ink);color:#fff}
 
   .panel{animation:fade .25s}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -238,26 +243,26 @@
       <div style="flex:1">
         <div class="search">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input id="searchInput" type="text" placeholder="Search parking in Hanoi…" autocomplete="off" />
+          <input id="searchInput" type="text" placeholder="Tìm bãi đỗ xe tại Hà Nội…" autocomplete="off" />
         </div>
         <div class="chips" id="chips">
-          <div class="chip active" data-filter="all"><i class="fa-solid fa-layer-group"></i>All</div>
-          <div class="chip" data-filter="basement"><i class="fa-solid fa-building"></i>Basements</div>
-          <div class="chip" data-filter="surface"><i class="fa-solid fa-square-parking"></i>Surface</div>
-          <div class="chip" data-filter="ev"><i class="fa-solid fa-bolt"></i>EV</div>
-          <div class="chip" data-filter="curbside"><i class="fa-solid fa-road"></i>Curbside</div>
+          <div class="chip active" data-filter="all"><i class="fa-solid fa-layer-group"></i><span data-i18n="filterAll">Tất cả</span></div>
+          <div class="chip" data-filter="basement"><i class="fa-solid fa-building"></i><span data-i18n="filterBasement">Hầm xe</span></div>
+          <div class="chip" data-filter="surface"><i class="fa-solid fa-square-parking"></i><span data-i18n="filterSurface">Bãi nổi</span></div>
+          <div class="chip" data-filter="ev"><i class="fa-solid fa-bolt"></i><span data-i18n="filterEv">Sạc EV</span></div>
+          <div class="chip" data-filter="curbside"><i class="fa-solid fa-road"></i><span data-i18n="filterCurbside">Ven đường</span></div>
         </div>
       </div>
     </div>
     <div class="map-styles" id="mapStyles" role="group" aria-label="Map style">
-      <button type="button" class="style-btn active" data-style="liberty"><i class="fa-solid fa-map"></i>Street</button>
-      <button type="button" class="style-btn" data-style="positron"><i class="fa-solid fa-sun"></i>Light</button>
-      <button type="button" class="style-btn" data-style="satellite"><i class="fa-solid fa-satellite"></i>Satellite</button>
+      <button type="button" class="style-btn active" data-style="liberty"><i class="fa-solid fa-map"></i><span data-i18n="styleStreet">Đường phố</span></button>
+      <button type="button" class="style-btn" data-style="positron"><i class="fa-solid fa-sun"></i><span data-i18n="styleLight">Sáng</span></button>
+      <button type="button" class="style-btn" data-style="satellite"><i class="fa-solid fa-satellite"></i><span data-i18n="styleSatellite">Vệ tinh</span></button>
     </div>
     <div class="map-ctrls" role="group" aria-label="Map controls">
-      <button type="button" class="map-ctrl" id="zoomInBtn" title="Zoom in" aria-label="Zoom in"><i class="fa-solid fa-plus"></i></button>
-      <button type="button" class="map-ctrl" id="zoomOutBtn" title="Zoom out" aria-label="Zoom out"><i class="fa-solid fa-minus"></i></button>
-      <button type="button" class="map-ctrl" id="locateBtn" title="My location / Hanoi center" aria-label="My location or Hanoi center"><i class="fa-solid fa-location-crosshairs"></i></button>
+      <button type="button" class="map-ctrl" id="zoomInBtn" title="Phóng to" aria-label="Phóng to"><i class="fa-solid fa-plus"></i></button>
+      <button type="button" class="map-ctrl" id="zoomOutBtn" title="Thu nhỏ" aria-label="Thu nhỏ"><i class="fa-solid fa-minus"></i></button>
+      <button type="button" class="map-ctrl" id="locateBtn" title="Vị trí của tôi / Trung tâm Hà Nội" aria-label="Vị trí của tôi hoặc Trung tâm Hà Nội"><i class="fa-solid fa-location-crosshairs"></i></button>
     </div>
   </div>
 
@@ -266,7 +271,11 @@
       <div class="logo"><i class="fa-solid fa-parking"></i></div>
       <div>
         <h1>ParkEase</h1>
-        <small>Hanoi Smart Parking</small>
+        <small id="brandSub">Đỗ xe thông minh Hà Nội</small>
+      </div>
+      <div class="lang-switch" id="langSwitch" role="group" aria-label="Language">
+        <button type="button" class="lang-btn active" data-lang="vi">VI</button>
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
       </div>
     </div>
     <div id="panel"></div>
@@ -296,8 +305,230 @@ const toastEl = document.getElementById('toast');
 const chipsEl = document.getElementById('chips');
 const searchEl = document.getElementById('searchInput');
 
-/* ---------- state (UI only; truth lives on server) ---------- */
+/* ---------- state & i18n ---------- */
+const LANG_KEY = 'parkease_lang';
+const I18N = {
+  vi: {
+    title: 'ParkEase — Đỗ xe thông minh Hà Nội',
+    brandSub: 'Đỗ xe thông minh Hà Nội',
+    searchPlaceholder: 'Tìm bãi đỗ xe tại Hà Nội…',
+    filterAll: 'Tất cả',
+    filterBasement: 'Hầm xe',
+    filterSurface: 'Bãi nổi',
+    filterEv: 'Sạc EV',
+    filterCurbside: 'Ven đường',
+    styleStreet: 'Đường phố',
+    styleLight: 'Sáng',
+    styleSatellite: 'Vệ tinh',
+    zoomIn: 'Phóng to',
+    zoomOut: 'Thu nhỏ',
+    locateTitle: 'Vị trí của tôi / Trung tâm Hà Nội',
+    stopsNearby: n => `${n} điểm đỗ xe quanh đây`,
+    peak: 'cao điểm',
+    offPeak: 'thấp điểm',
+    avail: 'Còn chỗ',
+    limited: 'Sắp đầy',
+    almostFull: 'Gần hết',
+    full: 'Hết chỗ',
+    freeCount: n => `${n} chỗ trống`,
+    fromRate: v => `từ ${v}/giờ`,
+    evShort: 'Sạc EV',
+    emptyFilter: 'Không tìm thấy bãi đỗ nào phù hợp.',
+    activeSessionBay: b => `Đang gửi xe · Ô ${b}`,
+    resume: 'Quay lại',
+    bayHeldName: n => `Đang giữ chỗ · ${n}`,
+    directions: 'Chỉ đường',
+    backToMap: 'Quay lại bản đồ',
+    baysFrac: (a, t) => `${a}/${t} chỗ trống`,
+    baysTotal: t => `${t} chỗ`,
+    evCharging: 'Sạc xe điện EV',
+    hrsUnit: 'GIỜ',
+    estTotal: 'Tổng ước tính',
+    tierPeak: 'Cao điểm 1.5×',
+    tierOff: 'Thấp điểm −30%',
+    plateLabel: 'Biển số xe của bạn',
+    plateHint: 'Dùng để mở barie cổng. Ví dụ: 30H-987.65',
+    holdDep: 'Đặt cọc giữ chỗ (50%)',
+    bookingFee: 'Phí đặt chỗ thêm',
+    reserveBtn: 'Đặt giữ chỗ này',
+    driveInBtn: 'Vào bãi ngay (không đặt trước)',
+    holdHint: 'Giữ chỗ tối đa 30 phút · tự chuyển thành phiên đỗ khi qua cổng',
+    headingTo: 'Đang dẫn đường tới',
+    calcRoute: 'Đang tính lộ trình ô tô…',
+    holdLeft: h => `Giữ chỗ ${h}h · còn`,
+    depositWord: v => `${v} đặt cọc`,
+    confirmPlate: 'Xác nhận biển số qua cổng',
+    checkInBtn: 'Check-in mở barie',
+    gmapsBtn: 'Mở bằng Google Maps',
+    cancelHoldBtn: 'Hủy giữ chỗ',
+    carRoute: 'Tuyến ô tô',
+    carFallback: 'Tuyến dự phòng',
+    directDist: 'Đường chim bay',
+    minSuffix: 'phút',
+    gpsSrc: 'GPS',
+    demoSrc: 'Điểm xuất phát mẫu',
+    startDemoTip: 'Điểm xuất phát mẫu (Ô tô)',
+    yourLoc: 'Vị trí của bạn',
+    activeSession: 'Phiên gửi xe đang chạy',
+    bayPrefix: 'Ô ',
+    dueSuffix: ' tạm tính',
+    extendBtn: '+30 phút',
+    checkoutBtn: 'Thanh toán',
+    facility: 'Bãi xe',
+    plate: 'Biển số',
+    depositCredit: 'Tiền cọc đã trừ',
+    plannedStay: 'Thời lượng dự kiến',
+    extended: 'Gia hạn thêm',
+    backToSession: 'Quay lại phiên gửi xe',
+    checkoutTitle: 'Thanh toán',
+    invoiceSub: 'Hóa đơn điện tử theo Nghị định 123/2020/NĐ-CP sẽ xuất tự động.',
+    duration: 'Thời gian đỗ',
+    estDue: 'Cần thanh toán dự kiến',
+    payWith: 'Phương thức thanh toán',
+    payBtn: 'Thanh toán & xuất hóa đơn',
+    serverTotalHint: 'Số tiền chính xác do máy chủ tính tại thời điểm thanh toán.',
+    paySuccess: 'Thanh toán thành công',
+    einvoiceIssued: 'Đã xuất hóa đơn điện tử Nghị định 123/2020/NĐ-CP',
+    total: 'Tổng cộng',
+    depDeduct: 'Trừ tiền cọc',
+    chargedVia: m => `Đã thanh toán qua ${m}`,
+    taxCodeTitle: 'Mã tra cứu của Cơ quan Thuế',
+    done: 'Hoàn tất',
+    invoiceSaved: c => `Hóa đơn đã lưu trên máy chủ · tra cứu tại /api/invoices/${c}`,
+    working: 'Đang xử lý…',
+    enterPlate: 'Vui lòng nhập biển số xe',
+    cannotReach: m => `Không kết nối được máy chủ: ${m}`,
+    bayHeldToast: 'Đã giữ chỗ trong 30 phút',
+    holdCancelled: 'Đã hủy giữ chỗ',
+    holdExpired: 'Đã hết 30 phút giữ chỗ',
+    sessionStarted: b => `Đã mở barie · Ô ${b}`,
+    extendedToast: 'Đã gia hạn thêm +30 phút',
+    centeredLoc: 'Đã định vị vị trí của bạn',
+    centeredHanoi: 'Đã đưa bản đồ về trung tâm Hà Nội',
+    finishSessionFirst: 'Vui lòng thanh toán phiên gửi xe hiện tại trước',
+    noRes: 'Không có lượt giữ chỗ hợp lệ',
+    holdingBay: 'Đang giữ chỗ…',
+    checkingIn: 'Đang kiểm tra barie…',
+    openingGate: 'Đang mở barie…',
+    processing: 'Đang xử lý thanh toán…',
+  },
+  en: {
+    title: 'ParkEase — Hanoi Smart Parking',
+    brandSub: 'Hanoi Smart Parking',
+    searchPlaceholder: 'Search parking in Hanoi…',
+    filterAll: 'All',
+    filterBasement: 'Basements',
+    filterSurface: 'Surface',
+    filterEv: 'EV',
+    filterCurbside: 'Curbside',
+    styleStreet: 'Street',
+    styleLight: 'Light',
+    styleSatellite: 'Satellite',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    locateTitle: 'My location / Hanoi center',
+    stopsNearby: n => `${n} parking stops nearby`,
+    peak: 'peak',
+    offPeak: 'off-peak',
+    avail: 'Available',
+    limited: 'Limited',
+    almostFull: 'Almost full',
+    full: 'Full',
+    freeCount: n => `${n} free`,
+    fromRate: v => `from ${v}/hr`,
+    evShort: 'EV',
+    emptyFilter: 'No stops match your filter.',
+    activeSessionBay: b => `Active session · Bay ${b}`,
+    resume: 'Resume',
+    bayHeldName: n => `Bay held · ${n}`,
+    directions: 'Directions',
+    backToMap: 'Back to map',
+    baysFrac: (a, t) => `${a}/${t} bays`,
+    baysTotal: t => `${t} bays`,
+    evCharging: 'EV charging',
+    hrsUnit: 'HRS',
+    estTotal: 'Estimated total',
+    tierPeak: 'Peak 1.5×',
+    tierOff: 'Off-peak −30%',
+    plateLabel: 'Your license plate',
+    plateHint: 'Used for gate check-in. Format: 30H-987.65',
+    holdDep: 'Hold deposit (50%)',
+    bookingFee: 'Net extra booking fee',
+    reserveBtn: 'Reserve this bay',
+    driveInBtn: 'Drive in now (no reservation)',
+    holdHint: 'Hold for 30 min · convert to active session on arrival',
+    headingTo: 'Heading to',
+    calcRoute: 'Calculating car route…',
+    holdLeft: h => `Hold ${h}h ·`,
+    depositWord: v => `${v} deposit`,
+    confirmPlate: 'Confirm plate for gate check-in',
+    checkInBtn: 'Check in at gate',
+    gmapsBtn: 'Open in Google Maps',
+    cancelHoldBtn: 'Cancel reservation',
+    carRoute: 'Car route',
+    carFallback: 'Car fallback',
+    directDist: 'Direct distance',
+    minSuffix: 'min',
+    gpsSrc: 'GPS',
+    demoSrc: 'Demo start',
+    startDemoTip: 'Car start (Demo)',
+    yourLoc: 'Your location',
+    activeSession: 'Active parking session',
+    bayPrefix: 'Bay ',
+    dueSuffix: ' due',
+    extendBtn: '+30 min',
+    checkoutBtn: 'Checkout',
+    facility: 'Facility',
+    plate: 'Plate',
+    depositCredit: 'Deposit credit',
+    plannedStay: 'Planned stay',
+    extended: 'Extended',
+    backToSession: 'Back to session',
+    checkoutTitle: 'Checkout',
+    invoiceSub: 'Decree 123/2020/NĐ-CP e-invoice auto-issued on payment.',
+    duration: 'Duration',
+    estDue: 'Estimated due',
+    payWith: 'Pay with',
+    payBtn: 'Pay & get invoice',
+    serverTotalHint: 'Total is computed server-side at the moment of payment.',
+    paySuccess: 'Payment successful',
+    einvoiceIssued: 'Decree 123/2020/NĐ-CP e-invoice issued',
+    total: 'Total',
+    depDeduct: 'Deposit credit',
+    chargedVia: m => `Charged via ${m}`,
+    taxCodeTitle: 'Tax Authority lookup code',
+    done: 'Done',
+    invoiceSaved: c => `Invoice saved on server · lookup via /api/invoices/${c}`,
+    working: 'Working…',
+    enterPlate: 'Enter a plate',
+    cannotReach: m => `Cannot reach backend: ${m}`,
+    bayHeldToast: 'Bay held for 30 min',
+    holdCancelled: 'Reservation cancelled',
+    holdExpired: 'Reservation hold expired',
+    sessionStarted: b => `Session started · Bay ${b}`,
+    extendedToast: '+30 min window extended',
+    centeredLoc: 'Centered on your location',
+    centeredHanoi: 'Centered on Hanoi',
+    finishSessionFirst: 'Finish active parking session first',
+    noRes: 'No reservation',
+    holdingBay: 'Holding bay…',
+    checkingIn: 'Checking in at gate…',
+    openingGate: 'Opening gate…',
+    processing: 'Processing…',
+  },
+};
+
+function getSavedLang(){
+  try {
+    const v = localStorage.getItem(LANG_KEY);
+    if (v === 'vi' || v === 'en') return v;
+  } catch {}
+  return 'vi';
+}
+
 const UI = {
+  lang: getSavedLang(),
+  busy: false,
   mode: 'browse',       // browse | facility | navigating | session | checkout
   facilityId: null,
   hours: 2,
@@ -315,6 +546,27 @@ const UI = {
   clockOffset: 0,
   peak: false,
 };
+
+const T = (key, ...args) => {
+  const dict = I18N[UI.lang] || I18N.vi;
+  const val = dict[key];
+  return typeof val === 'function' ? val(...args) : (val ?? key);
+};
+
+const ERR_VI = {
+  'Invalid plate format': 'Biển số xe chưa đúng định dạng (vd: 30H-987.65)',
+  'No free bays at this facility right now': 'Bãi xe này hiện đã hết chỗ trống',
+  'Reservation expired': 'Lượt giữ chỗ đã hết hạn 30 phút',
+  'Reservation not found': 'Không tìm thấy lượt giữ chỗ',
+  'Reservation not active': 'Lượt giữ chỗ không còn hiệu lực',
+  'Session not found': 'Không tìm thấy phiên gửi xe',
+  'Facility not found': 'Không tìm thấy bãi đỗ xe',
+};
+
+function errMsg(e){
+  const msg = e && e.message ? e.message : String(e || '');
+  return UI.lang === 'vi' ? (ERR_VI[msg] || msg) : msg;
+}
 
 /* ---------- helpers ---------- */
 function toast(msg, ms=2000){
@@ -338,6 +590,65 @@ const pinClass = f => {
   const r = f.avail / f.total;
   return r > 0.30 ? 'green' : r > 0.10 ? 'amber' : 'red';
 };
+const statusLabel = f => {
+  if (f.avail <= 0) return T('full');
+  const cls = pinClass(f);
+  return cls === 'green' ? T('avail') : cls === 'amber' ? T('limited') : T('almostFull');
+};
+
+async function withBusy(btn, fn){
+  if (UI.busy) return;
+  UI.busy = true;
+  const prevHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>${esc(T('working'))}`;
+  }
+  try {
+    return await fn();
+  } finally {
+    UI.busy = false;
+    if (btn && btn.isConnected) {
+      btn.disabled = false;
+      btn.innerHTML = prevHtml;
+    }
+  }
+}
+
+function applyStaticI18n(){
+  document.documentElement.lang = UI.lang;
+  document.title = T('title');
+  const sub = document.getElementById('brandSub');
+  if (sub) sub.textContent = T('brandSub');
+  searchEl.placeholder = T('searchPlaceholder');
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    el.textContent = T(el.dataset.i18n);
+  });
+  const zi = document.getElementById('zoomInBtn');
+  const zo = document.getElementById('zoomOutBtn');
+  const lo = document.getElementById('locateBtn');
+  if (zi) { zi.title = T('zoomIn'); zi.setAttribute('aria-label', T('zoomIn')); }
+  if (zo) { zo.title = T('zoomOut'); zo.setAttribute('aria-label', T('zoomOut')); }
+  if (lo) { lo.title = T('locateTitle'); lo.setAttribute('aria-label', T('locateTitle')); }
+  const ls = document.getElementById('langSwitch');
+  if (ls) {
+    ls.querySelectorAll('.lang-btn').forEach(b=>{
+      b.classList.toggle('active', b.dataset.lang === UI.lang);
+    });
+  }
+}
+
+function setLang(lang){
+  if (lang !== 'vi' && lang !== 'en') return;
+  UI.lang = lang;
+  try { localStorage.setItem(LANG_KEY, lang); } catch {}
+  applyStaticI18n();
+  if (UI.mode === 'navigating' && UI.facilityId) {
+    const f = UI.facilitiesRaw.find(x => x.id === UI.facilityId);
+    if (f) return startNavigation(f);
+  }
+  renderPanel();
+}
 
 const STORE_KEY = 'parkease_state';
 const serverNow = () => Date.now() + UI.clockOffset;
@@ -357,7 +668,7 @@ function saveLocalState(){
 function readPlateInput(id){
   const el = document.getElementById(id);
   const val = (el ? el.value : UI.plate).trim().toUpperCase();
-  if (!val) { toast('Enter a plate'); return null; }
+  if (!val) { toast(T('enterPlate')); return null; }
   UI.plate = val;
   if (el) el.value = val;
   return val;
@@ -438,7 +749,7 @@ async function loadFacilities(){
     syncMarkers(UI.facilities);
     if (UI.mode === 'browse') renderPanel();
   } catch(e){
-    toast('Cannot reach backend: ' + e.message, 4000);
+    toast(T('cannotReach', errMsg(e)), 4000);
   }
 }
 
@@ -495,14 +806,14 @@ function renderPanel(){
 function activeBannerHTML(){
   if (UI.session && UI.mode !== 'session' && UI.mode !== 'checkout') {
     return `<div class="resume-bar" data-act="resume-active">
-      <div><b>Active session · Bay ${esc(UI.session.bay)}</b><small>${esc(UI.session.facilityName)} · ${esc(UI.session.plate)}</small></div>
-      <span>Resume <i class="fa-solid fa-arrow-right"></i></span>
+      <div><b>${esc(T('activeSessionBay', UI.session.bay))}</b><small>${esc(UI.session.facilityName)} · ${esc(UI.session.plate)}</small></div>
+      <span>${esc(T('resume'))} <i class="fa-solid fa-arrow-right"></i></span>
     </div>`;
   }
   if (UI.reservation && UI.reservation.status === 'held' && serverNow() < UI.reservation.expiresAt && UI.mode !== 'navigating') {
     return `<div class="resume-bar" data-act="resume-active">
-      <div><b>Bay held · ${esc(UI.reservation.facilityName)}</b><small>${esc(UI.reservation.plate)} · ${UI.reservation.hours}h</small></div>
-      <span>Directions <i class="fa-solid fa-arrow-right"></i></span>
+      <div><b>${esc(T('bayHeldName', UI.reservation.facilityName))}</b><small>${esc(UI.reservation.plate)} · ${UI.reservation.hours}h</small></div>
+      <span>${esc(T('directions'))} <i class="fa-solid fa-arrow-right"></i></span>
     </div>`;
   }
   return '';
@@ -534,12 +845,12 @@ function renderBrowse(){
       ${activeBannerHTML()}
       <p style="font-size:.72rem;font-weight:800;text-transform:uppercase;
           letter-spacing:.07em;color:var(--muted);margin-bottom:12px">
-        ${list.length} parking stops nearby
-        ${UI.peak ? ' · <span style="color:#b06a00">peak</span>' : ' · <span style="color:#0f8a4b">off-peak</span>'}
+        ${esc(T('stopsNearby', list.length))}
+        ${UI.peak ? ` · <span style="color:#b06a00">${esc(T('peak'))}</span>` : ` · <span style="color:#0f8a4b">${esc(T('offPeak'))}</span>`}
       </p>
       ${list.length ? list.map(f=>{
         const cls = pinClass(f);
-        const label = cls==='green'?'Available':cls==='amber'?'Limited':'Almost full';
+        const label = statusLabel(f);
         return `
           <div data-fid="${f.id}" class="stop-card" style="background:var(--bg);
               border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px;
@@ -551,15 +862,15 @@ function renderBrowse(){
                   <i class="fa-solid fa-location-dot" style="color:var(--pink);margin-right:4px"></i>${esc(f.addr)}
                 </div>
               </div>
-              <span class="badge ${cls}" style="margin:0;font-size:.66rem">${label}</span>
+              <span class="badge ${cls}" style="margin:0;font-size:.66rem">${esc(label)}</span>
             </div>
             <div style="display:flex;gap:14px;margin-top:10px;font-size:.7rem;color:#5b6076;font-weight:600">
-              <span><i class="fa-solid fa-car" style="color:var(--pink)"></i> ${f.avail} free</span>
-              <span><i class="fa-solid fa-tag" style="color:var(--pink)"></i> from ${fmtVND(Math.round(f.rate*0.7))}/hr</span>
-              ${f.ev ? '<span><i class="fa-solid fa-bolt" style="color:var(--pink)"></i> EV</span>' : ''}
+              <span><i class="fa-solid fa-car" style="color:var(--pink)"></i> ${esc(T('freeCount', f.avail))}</span>
+              <span><i class="fa-solid fa-tag" style="color:var(--pink)"></i> ${esc(T('fromRate', fmtVND(Math.round(f.rate*0.7))))}</span>
+              ${f.ev ? `<span><i class="fa-solid fa-bolt" style="color:var(--pink)"></i> ${esc(T('evShort'))}</span>` : ''}
             </div>
           </div>`;
-      }).join('') : `<div class="empty"><i class="fa-solid fa-parking"></i><p>No stops match your filter.</p></div>`}
+      }).join('') : `<div class="empty"><i class="fa-solid fa-parking"></i><p>${esc(T('emptyFilter'))}</p></div>`}
     </div>`;
   wireActiveBanner();
   panelEl.querySelectorAll('.stop-card').forEach(el=>{
@@ -571,21 +882,22 @@ function renderFacility(){
   const f = UI.facilitiesRaw.find(x=>x.id===UI.facilityId);
   if (!f) { UI.mode='browse'; return renderBrowse(); }
   const cls = pinClass(f);
-  const label = cls==='green'?'Available':cls==='amber'?'Limited':'Almost full';
+  const label = statusLabel(f);
+  const isFull = f.avail <= 0;
   panelEl.innerHTML = `
     <div class="panel">
       ${activeBannerHTML()}
       <button class="btn btn-ghost" data-act="back" style="margin-bottom:16px;font-size:.82rem;padding:10px">
-        <i class="fa-solid fa-arrow-left"></i> Back to map
+        <i class="fa-solid fa-arrow-left"></i> ${esc(T('backToMap'))}
       </button>
       <div class="f-name">${esc(f.name)}</div>
       <div class="f-addr"><i class="fa-solid fa-location-dot"></i>${esc(f.addr)}</div>
-      <span class="badge ${cls}"><i class="fa-solid fa-circle" style="font-size:6px"></i>${label} · ${f.avail}/${f.total} bays</span>
+      <span class="badge ${cls}"><i class="fa-solid fa-circle" style="font-size:6px"></i>${esc(label)} · ${esc(T('baysFrac', f.avail, f.total))}</span>
 
       <div class="stats">
         <span><i class="fa-solid fa-clock"></i>${f.hours}</span>
-        <span><i class="fa-solid fa-car"></i>${f.total} bays</span>
-        ${f.ev ? '<span><i class="fa-solid fa-bolt"></i>EV charging</span>' : ''}
+        <span><i class="fa-solid fa-car"></i>${esc(T('baysTotal', f.total))}</span>
+        ${f.ev ? `<span><i class="fa-solid fa-bolt"></i>${esc(T('evCharging'))}</span>` : ''}
       </div>
 
       <div class="wheel-wrap">
@@ -595,30 +907,30 @@ function renderFacility(){
             <circle class="prog" id="wheelProg" cx="50" cy="50" r="42"></circle>
           </svg>
           <div class="knob" id="wheelKnob"></div>
-          <div class="wheel-center"><b id="wheelVal">${UI.hours}</b><small>HRS</small></div>
+          <div class="wheel-center"><b id="wheelVal">${UI.hours}</b><small>${esc(T('hrsUnit'))}</small></div>
         </div>
         <div class="price-box">
-          <div class="lbl">Estimated total</div>
+          <div class="lbl">${esc(T('estTotal'))}</div>
           <div class="amt" id="amtBox">…</div>
           <div class="tier off" id="tierBox">…</div>
         </div>
       </div>
 
       <div class="field">
-        <label><i class="fa-solid fa-car" style="color:var(--pink)"></i> Your license plate</label>
+        <label><i class="fa-solid fa-car" style="color:var(--pink)"></i> ${esc(T('plateLabel'))}</label>
         <input id="plateInput" type="text" value="${esc(UI.plate)}" maxlength="12" autocomplete="off" />
-        <p class="hint" style="margin-top:6px">Used for gate check-in. Format: 30H-987.65</p>
+        <p class="hint" style="margin-top:6px">${esc(T('plateHint'))}</p>
       </div>
 
-      <div class="kv"><span><i class="fa-solid fa-shield-halved" style="color:var(--pink);margin-right:6px"></i>Hold deposit (50%)</span><strong id="depBox">—</strong></div>
-      <div class="kv total"><span>Net extra booking fee</span><strong style="color:var(--green)">0 VND</strong></div>
+      <div class="kv"><span><i class="fa-solid fa-shield-halved" style="color:var(--pink);margin-right:6px"></i>${esc(T('holdDep'))}</span><strong id="depBox">—</strong></div>
+      <div class="kv total"><span>${esc(T('bookingFee'))}</span><strong style="color:var(--green)">0 VND</strong></div>
 
       <div class="divider"></div>
-      <button class="btn btn-primary" data-act="reserve"><i class="fa-solid fa-lock"></i>Reserve this bay</button>
-      <button class="btn btn-dark" data-act="walkin" style="margin-top:10px">
-        <i class="fa-solid fa-car-side"></i>Drive in now (no reservation)
+      <button class="btn btn-primary" data-act="reserve" ${isFull ? 'disabled' : ''}><i class="fa-solid fa-lock"></i>${esc(isFull ? T('full') : T('reserveBtn'))}</button>
+      <button class="btn btn-dark" data-act="walkin" style="margin-top:10px" ${isFull ? 'disabled' : ''}>
+        <i class="fa-solid fa-car-side"></i>${esc(T('driveInBtn'))}
       </button>
-      <p class="hint">Hold for 30 min · convert to active session on arrival</p>
+      <p class="hint">${esc(T('holdHint'))}</p>
     </div>`;
 
   wireActiveBanner();
@@ -627,8 +939,10 @@ function renderFacility(){
     UI.plate = e.target.value.trim().toUpperCase();
   });
   panelEl.querySelector('[data-act="back"]').addEventListener('click', ()=>goBrowse());
-  panelEl.querySelector('[data-act="reserve"]').addEventListener('click', ()=>doReserve(f));
-  panelEl.querySelector('[data-act="walkin"]').addEventListener('click', ()=>doWalkIn(f));
+  const resBtn = panelEl.querySelector('[data-act="reserve"]');
+  const walkBtn = panelEl.querySelector('[data-act="walkin"]');
+  resBtn.addEventListener('click', ()=>doReserve(f, resBtn));
+  walkBtn.addEventListener('click', ()=>doWalkIn(f, walkBtn));
 }
 
 function wireWheel(f){
@@ -646,7 +960,7 @@ function wireWheel(f){
     amtEl.innerHTML = q.total.toLocaleString('vi-VN') + '<span> VND</span>';
     depEl.textContent = fmtVND(q.deposit);
     tierEl.className = 'tier ' + (q.peak ? 'peak' : 'off');
-    tierEl.innerHTML = `<i class="fa-solid fa-arrow-${q.peak?'up':'down'}"></i> ${q.peak ? 'Peak 1.5×' : 'Off-peak −30%'}`;
+    tierEl.innerHTML = `<i class="fa-solid fa-arrow-${q.peak?'up':'down'}"></i> ${esc(q.peak ? T('tierPeak') : T('tierOff'))}`;
   }
 
   function localQuote(hours){
@@ -714,48 +1028,49 @@ function renderNavigating(){
       <div style="background:linear-gradient(135deg,#12121c,#2a1030);color:#fff;
           border-radius:18px;padding:18px;margin-bottom:16px">
         <div style="font-size:.64rem;font-weight:800;text-transform:uppercase;
-            letter-spacing:.08em;color:rgba(255,255,255,.6)">Heading to</div>
+            letter-spacing:.08em;color:rgba(255,255,255,.6)">${T('headingTo')}</div>
         <div style="font-size:1.1rem;font-weight:800;margin-top:4px">${esc(f.name)}</div>
         <div style="font-size:.74rem;color:rgba(255,255,255,.7);margin-top:4px;font-weight:600">
           <i class="fa-solid fa-location-dot" style="color:var(--pink);margin-right:4px"></i>${esc(f.addr)}
         </div>
         <div id="routeMeta" style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:.74rem;font-weight:700;color:rgba(255,255,255,.85)">
-          <i class="fa-solid fa-car" style="color:var(--pink)"></i><span>Calculating car route…</span>
+          <i class="fa-solid fa-car" style="color:var(--pink)"></i><span>${T('calcRoute')}</span>
         </div>
         ${res ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15);
             display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.74rem;font-weight:700">
-            <span>Hold ${res.hours}h · <b id="holdTimer" style="color:#fff">--:--</b> left</span>
-            <span style="color:var(--pink)">${fmtVND(res.deposit)} deposit</span>
+            <span>${T('holdLeft', res.hours)} <b id="holdTimer" style="color:#fff">--:--</b>${UI.lang === 'en' ? ' left' : ''}</span>
+            <span style="color:var(--pink)">${T('depositWord', fmtVND(res.deposit))}</span>
           </div>` : ''}
       </div>
 
       <div id="routeSteps" class="route-steps" style="display:none"></div>
 
       <div class="field">
-        <label><i class="fa-solid fa-car" style="color:var(--pink)"></i> Confirm plate for gate check-in</label>
+        <label><i class="fa-solid fa-car" style="color:var(--pink)"></i> ${T('confirmPlate')}</label>
         <input id="checkinPlate" type="text" value="${esc(UI.plate)}" maxlength="12" autocomplete="off" />
       </div>
 
       <button class="btn btn-primary" data-act="checkin">
-        <i class="fa-solid fa-right-to-bracket"></i>Check in at gate
+        <i class="fa-solid fa-right-to-bracket"></i>${T('checkInBtn')}
       </button>
       <a class="btn btn-dark" href="https://www.google.com/maps/dir/?api=1&destination=${f.lat},${f.lng}&travelmode=driving" target="_blank" rel="noopener noreferrer" style="margin-top:10px">
-        <i class="fa-solid fa-diamond-turn-right"></i>Open in Google Maps
+        <i class="fa-solid fa-diamond-turn-right"></i>${T('gmapsBtn')}
       </a>
       <button class="btn btn-ghost" data-act="back" style="margin-top:10px">
-        <i class="fa-solid fa-arrow-left"></i>Back to map
+        <i class="fa-solid fa-arrow-left"></i>${T('backToMap')}
       </button>
       ${res ? `<button class="btn btn-ghost" data-act="cancel-hold" style="margin-top:8px;color:var(--red);border-color:rgba(226,65,59,.25)">
-        <i class="fa-solid fa-xmark"></i>Cancel reservation
+        <i class="fa-solid fa-xmark"></i>${T('cancelHoldBtn')}
       </button>` : ''}
     </div>`;
 
   panelEl.querySelector('[data-act="back"]').addEventListener('click', ()=>goBrowse());
   const cancelBtn = panelEl.querySelector('[data-act="cancel-hold"]');
-  if (cancelBtn) cancelBtn.addEventListener('click', cancelHold);
-  panelEl.querySelector('[data-act="checkin"]').addEventListener('click', ()=>{
+  if (cancelBtn) cancelBtn.addEventListener('click', ()=>cancelHold(cancelBtn));
+  const checkinBtn = panelEl.querySelector('[data-act="checkin"]');
+  checkinBtn.addEventListener('click', ()=>{
     if (!readPlateInput('checkinPlate')) return;
-    doCheckIn();
+    withBusy(checkinBtn, ()=>doCheckIn());
   });
   if (res) startHoldTicker();
 }
@@ -766,33 +1081,34 @@ function renderSession(){
   panelEl.innerHTML = `
     <div class="panel">
       <div class="session-card">
-        <div class="lbl">Active parking session</div>
+        <div class="lbl">${T('activeSession')}</div>
         <div class="timer" id="liveTimer">00:00:00</div>
-        <div class="meta">Bay <b style="color:#fff">${esc(s.bay)}</b> · ${esc(s.plate)}</div>
+        <div class="meta">${T('bayPrefix')}<b style="color:#fff">${esc(s.bay)}</b> · ${esc(s.plate)}</div>
         <div class="cost" id="liveCost">—</div>
         <div class="session-actions">
           <button class="btn btn-ghost" data-act="extend" style="background:rgba(255,255,255,.1);color:#fff;border:none">
-            <i class="fa-solid fa-plus"></i>+30 min
+            <i class="fa-solid fa-plus"></i>${T('extendBtn')}
           </button>
-          <button class="btn btn-primary" data-act="checkout"><i class="fa-solid fa-receipt"></i>Checkout</button>
+          <button class="btn btn-primary" data-act="checkout"><i class="fa-solid fa-receipt"></i>${T('checkoutBtn')}</button>
         </div>
       </div>
-      <div class="kv"><span>Facility</span><strong style="text-align:right;max-width:60%">${esc(s.facilityName)}</strong></div>
-      <div class="kv"><span>Plate</span><strong>${esc(s.plate)}</strong></div>
-      <div class="kv"><span>Deposit credit</span><strong>${fmtVND(s.deposit)}</strong></div>
-      <div class="kv"><span>Planned stay</span><strong>${fmtDuration((s.plannedHours || 0) + (s.extendedMs || 0)/3_600_000)}</strong></div>
-      <div class="kv"><span>Extended</span><strong>+${fmtDuration((s.extendedMs || 0)/3_600_000)}</strong></div>
+      <div class="kv"><span>${T('facility')}</span><strong style="text-align:right;max-width:60%">${esc(s.facilityName)}</strong></div>
+      <div class="kv"><span>${T('plate')}</span><strong>${esc(s.plate)}</strong></div>
+      <div class="kv"><span>${T('depositCredit')}</span><strong>${fmtVND(s.deposit)}</strong></div>
+      <div class="kv"><span>${T('plannedStay')}</span><strong>${fmtDuration((s.plannedHours || 0) + (s.extendedMs || 0)/3_600_000)}</strong></div>
+      <div class="kv"><span>${T('extended')}</span><strong>+${fmtDuration((s.extendedMs || 0)/3_600_000)}</strong></div>
     </div>`;
 
-  panelEl.querySelector('[data-act="extend"]').addEventListener('click', async ()=>{
+  const extBtn = panelEl.querySelector('[data-act="extend"]');
+  extBtn.addEventListener('click', ()=>withBusy(extBtn, async ()=>{
     try {
       UI.session = await api(`/api/sessions/${UI.session.id}/extend`, {
         method:'POST', body:{ minutes:30 },
       });
-      toast('+30 min window extended');
+      toast(T('extendedToast'));
       renderSession();
-    } catch(e){ toast(e.message); }
-  });
+    } catch(e){ toast(errMsg(e), 3000); }
+  }));
   panelEl.querySelector('[data-act="checkout"]').addEventListener('click', ()=>openCheckout());
 
   startTicker();
@@ -810,19 +1126,19 @@ function renderCheckout(){
   panelEl.innerHTML = `
     <div class="panel">
       <button class="btn btn-ghost" data-act="back" style="margin-bottom:16px;font-size:.82rem;padding:10px">
-        <i class="fa-solid fa-arrow-left"></i>Back to session
+        <i class="fa-solid fa-arrow-left"></i>${T('backToSession')}
       </button>
-      <h2 style="font-size:1.15rem;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Checkout</h2>
-      <p class="hint" style="text-align:left;margin:0 0 16px">Decree 123/2020/NĐ-CP e-invoice auto-issued on payment.</p>
+      <h2 style="font-size:1.15rem;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">${T('checkoutTitle')}</h2>
+      <p class="hint" style="text-align:left;margin:0 0 16px">${T('invoiceSub')}</p>
 
-      <div class="kv"><span>Duration</span><strong>${fmtDuration(elapsedHours)}</strong></div>
-      <div class="kv"><span>Estimated total</span><strong>${fmtVND(estTotal)}</strong></div>
-      <div class="kv"><span>Deposit credit</span><strong>−${fmtVND(s.deposit)}</strong></div>
-      <div class="kv total"><span>Estimated due</span><strong>${fmtVND(estDue)}</strong></div>
+      <div class="kv"><span>${T('duration')}</span><strong>${fmtDuration(elapsedHours)}</strong></div>
+      <div class="kv"><span>${T('estTotal')}</span><strong>${fmtVND(estTotal)}</strong></div>
+      <div class="kv"><span>${T('depDeduct')}</span><strong>−${fmtVND(s.deposit)}</strong></div>
+      <div class="kv total"><span>${T('estDue')}</span><strong>${fmtVND(estDue)}</strong></div>
 
       <div class="divider"></div>
       <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;
-          letter-spacing:.07em;color:var(--muted);margin-bottom:10px">Pay with</div>
+          letter-spacing:.07em;color:var(--muted);margin-bottom:10px">${T('payWith')}</div>
       <div class="pays" id="pays">
         ${['MoMo','VietQR','ZaloPay','VETC'].map(p=>`
           <div class="pay ${p===UI.selectedPay?'active':''}" data-pay="${p}">
@@ -835,9 +1151,9 @@ function renderCheckout(){
       </div>
 
       <button class="btn btn-primary" data-act="pay">
-        <i class="fa-solid fa-lock"></i>Pay & get invoice
+        <i class="fa-solid fa-lock"></i>${T('payBtn')}
       </button>
-      <p class="hint">Total is computed server-side at the moment of payment.</p>
+      <p class="hint">${T('serverTotalHint')}</p>
     </div>`;
 
   panelEl.querySelectorAll('[data-pay]').forEach(el=>{
@@ -850,7 +1166,8 @@ function renderCheckout(){
   panelEl.querySelector('[data-act="back"]').addEventListener('click', ()=>{
     stopTicker(); UI.mode='session'; renderPanel();
   });
-  panelEl.querySelector('[data-act="pay"]').addEventListener('click', doPay);
+  const payBtn = panelEl.querySelector('[data-act="pay"]');
+  payBtn.addEventListener('click', ()=>doPay(payBtn));
 }
 
 /* ---------- actions ---------- */
@@ -881,23 +1198,25 @@ function goBrowse(){
   renderPanel();
 }
 
-async function cancelHold(){
-  const id = UI.reservation && UI.reservation.id;
-  UI.reservation = null;
-  saveLocalState();
-  if (id) {
-    try { await api(`/api/reservations/${id}`, { method:'DELETE' }); } catch {}
-  }
-  toast('Reservation cancelled');
-  clearRoute();
-  UI.mode = 'browse';
-  UI.facilityId = null;
-  map.flyTo(HANOI_CENTER, HANOI_ZOOM, { duration:.6 });
-  loadFacilities();
+async function cancelHold(btn){
+  await withBusy(btn, async ()=>{
+    const id = UI.reservation && UI.reservation.id;
+    UI.reservation = null;
+    saveLocalState();
+    if (id) {
+      try { await api(`/api/reservations/${id}`, { method:'DELETE' }); } catch {}
+    }
+    toast(T('holdCancelled'));
+    clearRoute();
+    UI.mode = 'browse';
+    UI.facilityId = null;
+    map.flyTo(HANOI_CENTER, HANOI_ZOOM, { duration:.6 });
+    await loadFacilities();
+  });
 }
 
 async function createReservation(f, plate){
-  if (UI.session) throw new Error('Finish active session first');
+  if (UI.session) throw new Error(T('finishSessionFirst'));
   if (UI.reservation && UI.reservation.status === 'held') {
     const oldId = UI.reservation.id;
     UI.reservation = null;
@@ -909,29 +1228,33 @@ async function createReservation(f, plate){
   });
 }
 
-async function doReserve(f){
+async function doReserve(f, btn){
   const plate = readPlateInput('plateInput');
   if (!plate) return;
-  try {
-    toast('Holding bay…', 1000);
-    UI.reservation = await createReservation(f, plate);
-    saveLocalState();
-    toast('Bay held for 30 min');
-    loadFacilities();
-    startNavigation(f);
-  } catch(e){
-    toast(e.message, 3000);
-  }
+  await withBusy(btn, async ()=>{
+    try {
+      toast(T('holdingBay'), 1000);
+      UI.reservation = await createReservation(f, plate);
+      saveLocalState();
+      toast(T('bayHeldToast'));
+      loadFacilities();
+      startNavigation(f);
+    } catch(e){
+      toast(errMsg(e), 3000);
+    }
+  });
 }
-async function doWalkIn(f){
+async function doWalkIn(f, btn){
   const plate = readPlateInput('plateInput');
   if (!plate) return;
-  try {
-    toast('Checking in at gate…', 900);
-    UI.reservation = await createReservation(f, plate);
-    saveLocalState();
-    doCheckIn();
-  } catch(e){ toast(e.message, 3000); }
+  await withBusy(btn, async ()=>{
+    try {
+      toast(T('checkingIn'), 900);
+      UI.reservation = await createReservation(f, plate);
+      saveLocalState();
+      await doCheckIn();
+    } catch(e){ toast(errMsg(e), 3000); }
+  });
 }
 
 const DEMO_STARTS = {
@@ -960,24 +1283,37 @@ function decodePolyline6(str){
 
 function stepIcon(text){
   const t = (text || '').toLowerCase();
-  if (t.includes('u-turn')) return 'fa-rotate-left';
-  if (t.includes('arrived') || t.includes('destination')) return 'fa-flag-checkered';
-  if (t.includes('left')) return 'fa-arrow-left';
-  if (t.includes('right')) return 'fa-arrow-right';
+  if (t.includes('u-turn') || t.includes('chữ u') || t.includes('quay đầu')) return 'fa-rotate-left';
+  if (t.includes('arrived') || t.includes('destination') || t.includes('đã đến') || t.includes('điểm đến')) return 'fa-flag-checkered';
+  if (t.includes('left') || t.includes('trái')) return 'fa-arrow-left';
+  if (t.includes('right') || t.includes('phải')) return 'fa-arrow-right';
   return 'fa-arrow-up';
 }
 
 function formatOsrmStep(s){
   const m = s.maneuver || {};
-  const street = s.name ? ` onto ${s.name}` : '';
-  if (m.type === 'arrive') return 'Arrive at destination';
-  if (m.type === 'depart') return s.name ? `Drive on ${s.name}` : 'Start driving';
-  if (m.modifier && m.modifier.includes('uturn')) return `Make a U-turn${street}`;
+  const vi = UI.lang === 'vi';
+  const street = s.name ? (vi ? ` vào ${s.name}` : ` onto ${s.name}`) : '';
+  if (m.type === 'arrive') return vi ? 'Đến điểm đỗ xe' : 'Arrive at destination';
+  if (m.type === 'depart') return s.name ? (vi ? `Lái xe trên ${s.name}` : `Drive on ${s.name}`) : (vi ? 'Bắt đầu di chuyển' : 'Start driving');
+  if (m.modifier && m.modifier.includes('uturn')) return (vi ? 'Quay đầu xe' : 'Make a U-turn') + street;
   if (m.modifier === 'straight' || m.type === 'new name' || m.type === 'continue') {
-    return s.name ? `Continue on ${s.name}` : 'Continue straight';
+    return s.name ? (vi ? `Tiếp tục trên ${s.name}` : `Continue on ${s.name}`) : (vi ? 'Đi thẳng' : 'Continue straight');
   }
-  const dir = m.modifier ? m.modifier.replace('_', ' ') : '';
-  return `${dir ? 'Turn ' + dir : 'Continue'}${street}`.trim();
+  const modMap = {
+    'left': vi ? 'Rẽ trái' : 'Turn left',
+    'right': vi ? 'Rẽ phải' : 'Turn right',
+    'slight left': vi ? 'Chếch trái' : 'Turn slight left',
+    'slight_left': vi ? 'Chếch trái' : 'Turn slight left',
+    'slight right': vi ? 'Chếch phải' : 'Turn slight right',
+    'slight_right': vi ? 'Chếch phải' : 'Turn slight right',
+    'sharp left': vi ? 'Rẽ ngoặt trái' : 'Turn sharp left',
+    'sharp_left': vi ? 'Rẽ ngoặt trái' : 'Turn sharp left',
+    'sharp right': vi ? 'Rẽ ngoặt phải' : 'Turn sharp right',
+    'sharp_right': vi ? 'Rẽ ngoặt phải' : 'Turn sharp right',
+  };
+  const turn = modMap[m.modifier] || (vi ? 'Đi tiếp' : (m.modifier ? 'Turn ' + m.modifier.replace('_', ' ') : 'Continue'));
+  return `${turn}${street}`.trim();
 }
 
 async function resolveStartPoint(f){
@@ -1023,7 +1359,7 @@ async function fetchValhallaCarRoute(start, end){
             maneuver_penalty: 20,
           },
         },
-        directions_options: { units: 'kilometers', language: 'en-US' },
+        directions_options: { units: 'kilometers', language: UI.lang === 'vi' ? 'vi-VN' : 'en-US' },
       }),
     });
     if (!res.ok) throw new Error('Valhalla HTTP ' + res.status);
@@ -1040,7 +1376,7 @@ async function fetchValhallaCarRoute(start, end){
       distanceM: Math.round((leg.summary?.length || 0) * 1000),
       durationS: leg.summary?.time ?? null,
       steps,
-      label: 'Car route',
+      label: T('carRoute'),
       isFallback: false,
     };
   } finally {
@@ -1071,7 +1407,7 @@ async function fetchCarRoute(start, end){
       distanceM: r.distance,
       durationS: r.duration,
       steps,
-      label: 'Car fallback',
+      label: T('carFallback'),
       isFallback: false,
     };
   } catch {
@@ -1080,7 +1416,7 @@ async function fetchCarRoute(start, end){
       distanceM: map.distance(start, end),
       durationS: null,
       steps: [],
-      label: 'Direct distance',
+      label: T('directDist'),
       isFallback: true,
     };
   } finally {
@@ -1106,15 +1442,15 @@ async function startNavigation(f){
   const line = L.polyline(route.points, { color:'#ff2e73', weight:5, opacity:.95, dashArray:dash });
   const startDot = L.circleMarker(start, {
     radius:7, color:'#ffffff', weight:3, fillColor:'#12121c', fillOpacity:1,
-  }).bindTooltip(isGps ? 'Your location' : 'Car start (Demo)');
+  }).bindTooltip(isGps ? T('yourLoc') : T('startDemoTip'));
 
   UI.routeLayer = L.layerGroup([casing, line, startDot]).addTo(map);
   map.fitBounds(line.getBounds(), { padding:[70,70] });
 
   const metaEl = document.getElementById('routeMeta');
   if (metaEl){
-    const eta = route.durationS != null ? ` · ~${Math.max(1, Math.round(route.durationS / 60))} min` : '';
-    const src = isGps ? 'GPS' : 'Demo start';
+    const eta = route.durationS != null ? ` · ~${Math.max(1, Math.round(route.durationS / 60))} ${T('minSuffix')}` : '';
+    const src = isGps ? T('gpsSrc') : T('demoSrc');
     metaEl.innerHTML = `<i class="fa-solid fa-car" style="color:var(--pink)"></i><span>${esc(route.label)} · ${fmtDistance(route.distanceM)}${eta} (${src})</span>`;
   }
   const stepsEl = document.getElementById('routeSteps');
@@ -1131,8 +1467,8 @@ async function startNavigation(f){
 
 async function doCheckIn(){
   try {
-    if (!UI.reservation) throw new Error('No reservation');
-    toast('Opening gate…', 1000);
+    if (!UI.reservation) throw new Error(T('noRes'));
+    toast(T('openingGate'), 1000);
     const session = await api('/api/sessions', {
       method:'POST', body:{ reservationId: UI.reservation.id, plate: UI.plate },
     });
@@ -1140,11 +1476,11 @@ async function doCheckIn(){
     UI.reservation = null;
     saveLocalState();
     clearRoute();
-    toast('Session started · Bay ' + session.bay);
+    toast(T('sessionStarted', session.bay));
     UI.mode = 'session';
     renderPanel();
     loadFacilities();
-  } catch(e){ toast(e.message, 3000); }
+  } catch(e){ toast(errMsg(e), 3000); }
 }
 
 function openCheckout(){
@@ -1153,43 +1489,45 @@ function openCheckout(){
   renderPanel();
 }
 
-async function doPay(){
-  try {
-    toast('Processing…', 1200);
-    const { invoice } = await api(`/api/sessions/${UI.session.id}/checkout`, {
-      method:'POST', body:{ method: UI.selectedPay },
-    });
-    UI.session = null;
-    UI.reservation = null;
-    saveLocalState();
-    loadFacilities();
+async function doPay(btn){
+  await withBusy(btn, async ()=>{
+    try {
+      toast(T('processing'), 1200);
+      const { invoice } = await api(`/api/sessions/${UI.session.id}/checkout`, {
+        method:'POST', body:{ method: UI.selectedPay },
+      });
+      UI.session = null;
+      UI.reservation = null;
+      saveLocalState();
+      loadFacilities();
 
-    modalCard.innerHTML = `
-      <h3>Payment successful</h3>
-      <div class="sub">Decree 123/2020/NĐ-CP e-invoice issued</div>
-      <div class="kv"><span>Duration</span><strong>${fmtDuration(invoice.elapsedHours)}</strong></div>
-      <div class="kv"><span>Total</span><strong>${fmtVND(invoice.total)}</strong></div>
-      <div class="kv"><span>Deposit credit</span><strong>−${fmtVND(invoice.deposit)}</strong></div>
-      <div class="kv total"><span>Charged via ${esc(invoice.method)}</span><strong>${fmtVND(invoice.final)}</strong></div>
-      <div class="invoice" style="margin-top:16px">
-        <i class="fa-solid fa-file-invoice"></i>
-        <div class="it">
-          <b>Mã tra cứu của Cơ quan Thuế</b>
-          <span class="code">${esc(invoice.lookupCode)}</span>
+      modalCard.innerHTML = `
+        <h3>${T('paySuccess')}</h3>
+        <div class="sub">${T('einvoiceIssued')}</div>
+        <div class="kv"><span>${T('duration')}</span><strong>${fmtDuration(invoice.elapsedHours)}</strong></div>
+        <div class="kv"><span>${T('total')}</span><strong>${fmtVND(invoice.total)}</strong></div>
+        <div class="kv"><span>${T('depDeduct')}</span><strong>−${fmtVND(invoice.deposit)}</strong></div>
+        <div class="kv total"><span>${T('chargedVia', esc(invoice.method))}</span><strong>${fmtVND(invoice.final)}</strong></div>
+        <div class="invoice" style="margin-top:16px">
+          <i class="fa-solid fa-file-invoice"></i>
+          <div class="it">
+            <b>${T('taxCodeTitle')}</b>
+            <span class="code">${esc(invoice.lookupCode)}</span>
+          </div>
+          <i class="fa-solid fa-circle-check" style="color:var(--green);margin-top:2px"></i>
         </div>
-        <i class="fa-solid fa-circle-check" style="color:var(--green);margin-top:2px"></i>
-      </div>
-      <button class="btn btn-primary" id="doneBtn">Done</button>
-      <p class="hint" style="margin-top:10px">Invoice saved on server · lookup via /api/invoices/${esc(invoice.lookupCode)}</p>
-    `;
-    modal.classList.add('show');
-    document.getElementById('doneBtn').addEventListener('click', ()=>{
-      modal.classList.remove('show');
-      UI.mode = 'browse';
-      UI.facilityId = null;
-      renderPanel();
-    });
-  } catch(e){ toast(e.message, 3000); }
+        <button class="btn btn-primary" id="doneBtn">${T('done')}</button>
+        <p class="hint" style="margin-top:10px">${T('invoiceSaved', esc(invoice.lookupCode))}</p>
+      `;
+      modal.classList.add('show');
+      document.getElementById('doneBtn').addEventListener('click', ()=>{
+        modal.classList.remove('show');
+        UI.mode = 'browse';
+        UI.facilityId = null;
+        renderPanel();
+      });
+    } catch(e){ toast(errMsg(e), 3000); }
+  });
 }
 
 /* ticker */
@@ -1209,7 +1547,7 @@ function startTicker(){
       const rate = s.rate, cap = s.cap;
       const mult = UI.peak ? 1.5 : 0.7;
       const total = Math.min(Math.round(hours*rate*mult), cap);
-      c.textContent = fmtVND(Math.max(0, total - s.deposit)) + ' due';
+      c.textContent = fmtVND(Math.max(0, total - s.deposit)) + T('dueSuffix');
     }
   };
   tick();
@@ -1235,7 +1573,7 @@ function startHoldTicker(){
       saveLocalState();
       const chk = panelEl.querySelector('[data-act="checkin"]');
       if (chk) chk.disabled = true;
-      toast('Reservation hold expired', 3500);
+      toast(T('holdExpired'), 3500);
       loadFacilities();
       return;
     }
@@ -1288,19 +1626,27 @@ locateBtn.addEventListener('click', async ()=>{
     if (!userDot) {
       userDot = L.circleMarker(coords, {
         radius:7, color:'#ffffff', weight:3, fillColor:'#2563eb', fillOpacity:1,
-      }).addTo(map).bindTooltip('Your location');
+      }).addTo(map).bindTooltip(T('yourLoc'));
     } else {
-      userDot.setLatLng(coords);
+      userDot.setLatLng(coords).setTooltipContent(T('yourLoc'));
     }
     map.flyTo(coords, 15, { duration:.7 });
-    toast('Centered on your location');
+    toast(T('centeredLoc'));
   } catch {
     map.flyTo(HANOI_CENTER, HANOI_ZOOM, { duration:.6 });
-    toast('Centered on Hanoi');
+    toast(T('centeredHanoi'));
   } finally {
     locateBtn.disabled = false;
   }
 });
+
+const langSwitchEl = document.getElementById('langSwitch');
+if (langSwitchEl) {
+  langSwitchEl.addEventListener('click', e => {
+    const btn = e.target.closest('.lang-btn');
+    if (btn && btn.dataset.lang) setLang(btn.dataset.lang);
+  });
+}
 
 async function restoreState(){
   if (UI.mode !== 'browse') return;
@@ -1341,6 +1687,7 @@ async function restoreState(){
 }
 
 /* boot */
+applyStaticI18n();
 (async ()=>{
   await loadFacilities();
   await restoreState();
