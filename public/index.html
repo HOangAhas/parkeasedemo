@@ -456,24 +456,50 @@ function wireWheel(f){
   prog.style.strokeDasharray = C;
   const MIN = 0.5, MAX = 8;
   let dragging = false;
+  let quoteSeq = 0;
+  let quoteCtrl = null;
+  let quoteTimer = null;
 
-  async function refresh(){
-    try {
-      const q = await api(`/api/quote?facilityId=${f.id}&hours=${UI.hours}`);
-      amtEl.innerHTML = q.total.toLocaleString('vi-VN') + '<span> VND</span>';
-      depEl.textContent = fmtVND(q.deposit);
-      tierEl.className = 'tier ' + (q.peak ? 'peak' : 'off');
-      tierEl.innerHTML = `<i class="fa-solid fa-arrow-${q.peak?'up':'down'}"></i> ${q.peak ? 'Peak 1.5×' : 'Off-peak −30%'}`;
-    } catch(e){ /* ignore */ }
+  function renderQuote(q){
+    amtEl.innerHTML = q.total.toLocaleString('vi-VN') + '<span> VND</span>';
+    depEl.textContent = fmtVND(q.deposit);
+    tierEl.className = 'tier ' + (q.peak ? 'peak' : 'off');
+    tierEl.innerHTML = `<i class="fa-solid fa-arrow-${q.peak?'up':'down'}"></i> ${q.peak ? 'Peak 1.5×' : 'Off-peak −30%'}`;
   }
 
-  function setHours(h){
-    UI.hours = Math.max(MIN, Math.min(MAX, h));
+  function localQuote(hours){
+    const mult = UI.peak ? 1.5 : 0.7;
+    const total = Math.min(Math.round(hours * (f.rate || 20000) * mult), f.cap || 120000);
+    return { total, deposit: Math.round(total * 0.5), peak: UI.peak };
+  }
+
+  async function refresh(hours){
+    const seq = ++quoteSeq;
+    if (quoteCtrl) quoteCtrl.abort();
+    quoteCtrl = new AbortController();
+    try {
+      const q = await api(`/api/quote?facilityId=${f.id}&hours=${hours}`, { signal: quoteCtrl.signal });
+      if (seq !== quoteSeq || !amtEl.isConnected) return;
+      UI.peak = q.peak;
+      renderQuote(q);
+    } catch(e){ /* ignore aborted or transient quote errors */ }
+  }
+
+  function setHours(h, force = false){
+    const next = Math.max(MIN, Math.min(MAX, h));
+    if (!force && next === UI.hours) return;
+    UI.hours = next;
     const p = (UI.hours - MIN) / (MAX - MIN);
     prog.style.strokeDashoffset = C * (1 - p);
     knob.style.transform = `translate(-50%,-50%) rotate(${p*360}deg) translateY(-54px)`;
     valEl.textContent = UI.hours;
-    refresh();
+    renderQuote(localQuote(UI.hours));
+    clearTimeout(quoteTimer);
+    if (force) {
+      refresh(UI.hours);
+    } else {
+      quoteTimer = setTimeout(() => refresh(UI.hours), 100);
+    }
   }
 
   function angle(e){
@@ -489,12 +515,12 @@ function wireWheel(f){
     setHours(Math.round((MIN + (a/360)*(MAX-MIN)) * 2) / 2);
   }
   function start(e){ e.preventDefault(); dragging = true; document.body.style.userSelect='none';
-    window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', end); onMove(e); }
+    window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end); onMove(e); }
   function end(){ dragging = false; document.body.style.userSelect='';
-    window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', end); }
+    window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', end); window.removeEventListener('pointercancel', end); }
   wheel.addEventListener('pointerdown', start);
 
-  setHours(UI.hours);
+  setHours(UI.hours, true);
 }
 
 function renderNavigating(){
