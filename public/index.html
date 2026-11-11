@@ -243,6 +243,7 @@ const UI = {
   routeLayer: null,
   routeSeq: 0,
   tickTimer: null,
+  clockOffset: 0,
   peak: false,
 };
 
@@ -269,6 +270,8 @@ const pinClass = f => {
   return r > 0.30 ? 'green' : r > 0.10 ? 'amber' : 'red';
 };
 
+const serverNow = () => Date.now() + UI.clockOffset;
+
 /* ---------- API client ---------- */
 async function api(path, opts={}){
   const res = await fetch(API + path, {
@@ -278,6 +281,9 @@ async function api(path, opts={}){
   });
   const data = await res.json().catch(()=>({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  if (data && typeof data.serverTime === 'number') {
+    UI.clockOffset = data.serverTime - Date.now();
+  }
   return data;
 }
 
@@ -580,7 +586,7 @@ function renderSession(){
 function renderCheckout(){
   const s = UI.session;
   if (!s) { UI.mode='browse'; return renderBrowse(); }
-  const elapsedMs = Date.now() - s.startTs + s.extendedMs;
+  const elapsedMs = Math.max(0, serverNow() - s.startTs + s.extendedMs);
   const elapsedHours = Math.max(0.5, elapsedMs / 3_600_000);
   // preview (server is source of truth on submit)
   panelEl.innerHTML = `
@@ -817,12 +823,12 @@ async function doPay(){
 function startTicker(){
   stopTicker();
   if (!UI.session) return;
-  UI.tickTimer = setInterval(()=>{
+  const tick = ()=>{
     const el = document.getElementById('liveTimer');
     const c = document.getElementById('liveCost');
     if (!el || !UI.session) return stopTicker();
     const s = UI.session;
-    const ms = Date.now() - s.startTs + s.extendedMs;
+    const ms = Math.max(0, serverNow() - s.startTs + s.extendedMs);
     el.textContent = fmtClock(ms);
     if (c){
       const hours = Math.max(0.5, ms/3_600_000);
@@ -832,7 +838,9 @@ function startTicker(){
       const total = Math.min(Math.round(hours*rate*mult), cap);
       c.textContent = fmtVND(Math.max(0, total - s.deposit)) + ' due';
     }
-  }, 500);
+  };
+  tick();
+  UI.tickTimer = setInterval(tick, 500);
 }
 function stopTicker(){ if (UI.tickTimer){ clearInterval(UI.tickTimer); UI.tickTimer = null; } }
 

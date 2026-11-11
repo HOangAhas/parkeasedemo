@@ -203,13 +203,14 @@ app.post('/api/sessions', async (req, res) => {
   }
 
   const f = findFacility(r.facilityId);
+  const now = Date.now();
   const session = {
     id: rid('ses'),
     facilityId: r.facilityId,
     facilityName: r.facilityName,
     plate: r.plate,
     bay: 'A' + Math.floor(10 + Math.random() * 80),
-    startTs: Date.now(),
+    startTs: now,
     plannedHours: r.hours,
     extendedMs: 0,
     rate: f.rate,
@@ -220,7 +221,7 @@ app.post('/api/sessions', async (req, res) => {
   r.status = 'converted';
   saveDB(db);
 
-  res.status(201).json(session);
+  res.status(201).json({ ...session, serverTime: now });
 });
 
 /* Get session (for refreshing after reload) */
@@ -228,7 +229,7 @@ app.get('/api/sessions/:id', async (req, res) => {
   const db = loadDB();
   const s = db.sessions[req.params.id];
   if (!s) return res.status(404).json({ error: 'Not found' });
-  res.json(s);
+  res.json({ ...s, serverTime: Date.now() });
 });
 
 /* Extend session (+30 min or custom minutes) */
@@ -240,7 +241,7 @@ app.post('/api/sessions/:id/extend', async (req, res) => {
   if (!s) return res.status(404).json({ error: 'Session not found' });
   s.extendedMs += minutes * 60 * 1000;
   saveDB(db);
-  res.json(s);
+  res.json({ ...s, serverTime: Date.now() });
 });
 
 /* Checkout: stop session, compute final, issue invoice */
