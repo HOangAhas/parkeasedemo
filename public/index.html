@@ -17,8 +17,18 @@
   html,body{height:100%;overflow:hidden}
   body{background:var(--bg);color:var(--ink)}
 
-  .app{display:grid;grid-template-columns:1fr 400px;height:100vh}
-  @media(max-width:900px){.app{grid-template-columns:1fr}.sidebar{display:none!important}}
+  .app{display:grid;grid-template-columns:1fr 400px;height:100vh;height:100dvh}
+  @media(max-width:900px){
+    .app{grid-template-columns:1fr;grid-template-rows:42% 58%}
+    .sidebar{border-left:none;border-top:1px solid var(--line);border-radius:20px 20px 0 0;
+      padding:16px;box-shadow:0 -8px 28px rgba(18,18,28,.12);z-index:600}
+    .brand{margin-bottom:14px}
+    .searchbar{top:12px;left:12px;right:12px}
+    .search{padding:10px 13px;max-width:none}
+    .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-top:8px;padding-bottom:2px}
+    .chips::-webkit-scrollbar{display:none}
+    .chip{flex:0 0 auto;padding:6px 11px;font-size:.72rem}
+  }
 
   #map{height:100%;width:100%;z-index:1}
   .map-wrap{position:relative;overflow:hidden}
@@ -270,7 +280,29 @@ const pinClass = f => {
   return r > 0.30 ? 'green' : r > 0.10 ? 'amber' : 'red';
 };
 
+const STORE_KEY = 'parkease_state';
 const serverNow = () => Date.now() + UI.clockOffset;
+
+function saveLocalState(){
+  try {
+    if (UI.session) {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ sessionId: UI.session.id }));
+    } else if (UI.reservation) {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ reservationId: UI.reservation.id }));
+    } else {
+      localStorage.removeItem(STORE_KEY);
+    }
+  } catch { /* ignore storage errors */ }
+}
+
+function readPlateInput(id){
+  const el = document.getElementById(id);
+  const val = (el ? el.value : UI.plate).trim().toUpperCase();
+  if (!val) { toast('Enter a plate'); return null; }
+  UI.plate = val;
+  if (el) el.value = val;
+  return val;
+}
 
 /* ---------- API client ---------- */
 async function api(path, opts={}){
@@ -301,6 +333,7 @@ try {
 }
 
 const markers = {};
+window.addEventListener('resize', ()=>map.invalidateSize());
 
 async function loadFacilities(){
   try {
@@ -444,6 +477,9 @@ function renderFacility(){
     </div>`;
 
   wireWheel(f);
+  panelEl.querySelector('#plateInput').addEventListener('input', e=>{
+    UI.plate = e.target.value.trim().toUpperCase();
+  });
   panelEl.querySelector('[data-act="back"]').addEventListener('click', ()=>goBrowse());
   panelEl.querySelector('[data-act="reserve"]').addEventListener('click', ()=>doReserve(f));
   panelEl.querySelector('[data-act="walkin"]').addEventListener('click', ()=>doWalkIn(f));
@@ -565,9 +601,7 @@ function renderNavigating(){
 
   panelEl.querySelector('[data-act="back"]').addEventListener('click', ()=>goBrowse());
   panelEl.querySelector('[data-act="checkin"]').addEventListener('click', ()=>{
-    const p = $('#checkinPlate').value.trim();
-    if (!p) return toast('Enter a plate');
-    UI.plate = p;
+    if (!readPlateInput('checkinPlate')) return;
     doCheckIn();
   });
 }
@@ -679,18 +713,25 @@ function goBrowse(){
   clearRoute();
   UI.mode = 'browse';
   UI.facilityId = null;
+  if (!UI.session) {
+    UI.reservation = null;
+    saveLocalState();
+  }
   map.flyTo([21.0285,105.8542], 13.4, { duration:.6 });
   renderPanel();
 }
 
 async function doReserve(f){
+  const plate = readPlateInput('plateInput');
+  if (!plate) return;
   try {
     toast('Holding bay…', 1000);
     const res = await api('/api/reservations', {
       method:'POST',
-      body: { facilityId: f.id, hours: UI.hours, plate: UI.plate },
+      body: { facilityId: f.id, hours: UI.hours, plate },
     });
     UI.reservation = res;
+    saveLocalState();
     toast('Bay held for 30 min');
     startNavigation(f);
   } catch(e){
@@ -698,14 +739,17 @@ async function doReserve(f){
   }
 }
 async function doWalkIn(f){
+  const plate = readPlateInput('plateInput');
+  if (!plate) return;
   try {
     // walk-in: create a short hold and immediately convert
     toast('Setting up walk-in…', 900);
     const res = await api('/api/reservations', {
       method:'POST',
-      body: { facilityId: f.id, hours: UI.hours, plate: UI.plate },
+      body: { facilityId: f.id, hours: UI.hours, plate },
     });
     UI.reservation = res;
+    saveLocalState();
     doCheckIn();
   } catch(e){ toast(e.message, 3000); }
 }
@@ -792,9 +836,11 @@ async function doCheckIn(){
     if (!UI.reservation) throw new Error('No reservation');
     toast('Opening gate…', 1000);
     const session = await api('/api/sessions', {
-      method:'POST', body:{ reservationId: UI.reservation.id },
+      method:'POST', body:{ reservationId: UI.reservation.id, plate: UI.plate },
     });
     UI.session = session;
+    UI.reservation = null;
+    saveLocalState();
     clearRoute();
     toast('Session started · Bay ' + session.bay);
     UI.mode = 'session';
@@ -816,6 +862,7 @@ async function doPay(){
     });
     UI.session = null;
     UI.reservation = null;
+    saveLocalState();
 
     modalCard.innerHTML = `
       <h3>Payment successful</h3>
@@ -886,8 +933,49 @@ searchEl.addEventListener('input', ()=>{
   if (UI.mode === 'browse') renderPanel();
 });
 
+async function restoreState(){
+  if (UI.mode !== 'browse') return;
+  let saved;
+  try { saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch { return; }
+  if (!saved) return;
+
+  if (saved.sessionId) {
+    try {
+      const s = await api(`/api/sessions/${saved.sessionId}`);
+      UI.session = s;
+      UI.facilityId = s.facilityId;
+      UI.plate = s.plate;
+      UI.mode = 'session';
+      const f = UI.facilitiesRaw.find(x => x.id === s.facilityId);
+      if (f) map.setView([f.lat, f.lng], 15.5);
+      renderPanel();
+      return;
+    } catch { /* session ended or reset on server */ }
+  }
+
+  if (saved.reservationId) {
+    try {
+      const r = await api(`/api/reservations/${saved.reservationId}`);
+      const f = UI.facilitiesRaw.find(x => x.id === r.facilityId);
+      if (f && r.status === 'held' && serverNow() < r.expiresAt) {
+        UI.reservation = r;
+        UI.plate = r.plate;
+        startNavigation(f);
+        return;
+      }
+    } catch { /* reservation expired or missing */ }
+  }
+
+  UI.reservation = null;
+  UI.session = null;
+  saveLocalState();
+}
+
 /* boot */
-loadFacilities();
+(async ()=>{
+  await loadFacilities();
+  await restoreState();
+})();
 setInterval(loadFacilities, 30_000);   // refresh availability every 30s
 })();
 </script>

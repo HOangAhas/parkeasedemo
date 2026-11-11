@@ -88,6 +88,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const jitter = (min, max) => Math.floor(min + Math.random() * (max - min));
 const rid = (prefix) => prefix + '_' + Math.random().toString(36).slice(2, 10);
 const findFacility = id => FACILITIES.find(f => f.id === id);
+const PLATE_RE = /^[0-9A-Za-z\-\.]{6,12}$/;
 
 /* ============================================================
    ROUTES
@@ -140,7 +141,8 @@ app.post('/api/reservations', async (req, res) => {
   const f = findFacility(facilityId);
   if (!f) return res.status(404).json({ error: 'Facility not found' });
   if (!hours || hours < 0.5 || hours > 8) return res.status(400).json({ error: 'Invalid hours' });
-  if (!plate || !/^[0-9A-Za-z\-\.]{6,12}$/.test(plate))
+  const cleanPlate = String(plate || '').trim().toUpperCase();
+  if (!PLATE_RE.test(cleanPlate))
     return res.status(400).json({ error: 'Invalid plate format' });
 
   // simulate 10% "bay just got taken"
@@ -148,25 +150,26 @@ app.post('/api/reservations', async (req, res) => {
     return res.status(409).json({ error: 'Bay just got taken — try again' });
   }
 
+  const now = Date.now();
   const total = priceFor(f, hours);
   const resv = {
     id: rid('res'),
     facilityId,
     facilityName: f.name,
     hours,
-    plate,
+    plate: cleanPlate,
     total,
     deposit: Math.round(total * 0.5),
     status: 'held',
-    createdAt: Date.now(),
-    expiresAt: Date.now() + 30 * 60 * 1000,
+    createdAt: now,
+    expiresAt: now + 30 * 60 * 1000,
   };
 
   const db = loadDB();
   db.reservations[resv.id] = resv;
   saveDB(db);
 
-  res.status(201).json(resv);
+  res.status(201).json({ ...resv, serverTime: now });
 });
 
 /* Cancel reservation */
@@ -185,13 +188,18 @@ app.get('/api/reservations/:id', async (req, res) => {
   const db = loadDB();
   const r = db.reservations[req.params.id];
   if (!r) return res.status(404).json({ error: 'Not found' });
-  res.json(r);
+  const now = Date.now();
+  if (r.status === 'held' && now > r.expiresAt) {
+    r.status = 'expired';
+    saveDB(db);
+  }
+  res.json({ ...r, serverTime: now });
 });
 
 /* Check in → convert reservation to session */
 app.post('/api/sessions', async (req, res) => {
   await sleep(jitter(120, 280));
-  const { reservationId } = req.body || {};
+  const { reservationId, plate } = req.body || {};
   const db = loadDB();
   const r = db.reservations[reservationId];
   if (!r) return res.status(404).json({ error: 'Reservation not found' });
@@ -202,13 +210,21 @@ app.post('/api/sessions', async (req, res) => {
     return res.status(410).json({ error: 'Reservation expired' });
   }
 
+  let finalPlate = r.plate;
+  if (plate !== undefined && plate !== null && String(plate).trim() !== '') {
+    const cleanPlate = String(plate).trim().toUpperCase();
+    if (!PLATE_RE.test(cleanPlate)) return res.status(400).json({ error: 'Invalid plate format' });
+    finalPlate = cleanPlate;
+    r.plate = cleanPlate;
+  }
+
   const f = findFacility(r.facilityId);
   const now = Date.now();
   const session = {
     id: rid('ses'),
     facilityId: r.facilityId,
     facilityName: r.facilityName,
-    plate: r.plate,
+    plate: finalPlate,
     bay: 'A' + Math.floor(10 + Math.random() * 80),
     startTs: now,
     plannedHours: r.hours,
