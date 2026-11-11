@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>ParkEase — Hanoi Smart Parking</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 <style>
   :root{
@@ -35,10 +36,13 @@
   .chip.active{background:var(--ink);border-color:var(--ink);color:#fff}
   .chip.active i{color:var(--pink)}
 
-  .pin{display:flex;align-items:center;gap:6px;background:#fff;border-radius:30px;padding:7px 11px;
-    font-weight:800;font-size:.74rem;color:var(--ink);white-space:nowrap;
-    box-shadow:0 6px 20px rgba(18,18,28,.18);border:2px solid #fff}
-  .pin .dot{width:8px;height:8px;border-radius:50%}
+  .pin{display:inline-flex;align-items:center;gap:6px;width:max-content;background:#fff;
+    border-radius:30px;padding:6px 11px;font-weight:800;font-size:.73rem;color:var(--ink);
+    white-space:nowrap;box-shadow:0 4px 16px rgba(18,18,28,.18);
+    border:1.5px solid rgba(18,18,28,.08);transform:translate(-50%,-50%);transition:transform .15s}
+  .leaflet-marker-icon:hover{z-index:1000!important}
+  .leaflet-marker-icon:hover .pin{transform:translate(-50%,-50%) scale(1.06)}
+  .pin .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
   .pin.green .dot{background:var(--green)}
   .pin.amber .dot{background:var(--amber)}
   .pin.red .dot{background:var(--red)}
@@ -68,7 +72,7 @@
   .stats i{color:var(--pink);font-size:.72rem}
 
   .btn{width:100%;border:none;border-radius:14px;padding:14px;font-size:.9rem;font-weight:800;
-    display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:.15s}
+    display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:.15s;text-decoration:none}
   .btn-primary{background:var(--pink);color:#fff;box-shadow:0 10px 24px var(--pink-glow)}
   .btn-primary:active{transform:scale(.98)}
   .btn-dark{background:var(--ink);color:#fff}
@@ -204,6 +208,8 @@
 <div class="toast" id="toast">Saved</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/maplibre-gl@5.1.0/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js"></script>
 <script>
 /* ================================================================
    ParkEase — frontend (talks to Express backend)
@@ -234,7 +240,8 @@ const UI = {
   session: null,
   plate: '30H-987.65',
   selectedPay: 'MoMo',
-  routeLine: null,
+  routeLayer: null,
+  routeSeq: 0,
   tickTimer: null,
   peak: false,
 };
@@ -276,9 +283,16 @@ async function api(path, opts={}){
 
 /* ---------- map ---------- */
 const map = L.map('map', { zoomControl:false }).setView([21.0285, 105.8542], 13.4);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-  attribution:'&copy; OSM &copy; CARTO', maxZoom:19,
-}).addTo(map);
+try {
+  L.maplibreGL({
+    style: 'https://tiles.openfreemap.org/styles/positron',
+  }).addTo(map);
+} catch {
+  L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">HOT</a>',
+    maxZoom:19,
+  }).addTo(map);
+}
 
 const markers = {};
 
@@ -304,16 +318,19 @@ function filterList(list){
   });
 }
 
+function makePinIcon(f){
+  const cls = pinClass(f);
+  const html = `<div class="pin ${cls}"><span class="dot"></span>${f.avail} / ${f.total}</div>`;
+  return L.divIcon({ className:'', html, iconSize:[0,0], iconAnchor:[0,0] });
+}
+
 function syncMarkers(all){
   all.forEach(f=>{
-    const cls = pinClass(f);
-    const html = `<div class="pin ${cls}"><span class="dot"></span>${f.avail} / ${f.total}</div>`;
+    const icon = makePinIcon(f);
     if (markers[f.id]) {
-      markers[f.id].setIcon(L.divIcon({ className:'', html, iconSize:[0,0], iconAnchor:[28,20] }));
+      markers[f.id].setIcon(icon);
     } else {
-      const m = L.marker([f.lat, f.lng], {
-        icon: L.divIcon({ className:'', html, iconSize:[0,0], iconAnchor:[28,20] }),
-      }).addTo(map);
+      const m = L.marker([f.lat, f.lng], { icon }).addTo(map);
       m.on('click', ()=>selectFacility(f.id));
       markers[f.id] = m;
     }
@@ -488,6 +505,9 @@ function renderNavigating(){
         <div style="font-size:.74rem;color:rgba(255,255,255,.7);margin-top:4px;font-weight:600">
           <i class="fa-solid fa-location-dot" style="color:var(--pink);margin-right:4px"></i>${esc(f.addr)}
         </div>
+        <div id="routeMeta" style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:.74rem;font-weight:700;color:rgba(255,255,255,.85)">
+          <i class="fa-solid fa-route" style="color:var(--pink)"></i><span>Calculating route…</span>
+        </div>
         ${res ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15);
             display:flex;justify-content:space-between;font-size:.74rem;font-weight:700">
             <span>Bay held · ${res.hours}h</span>
@@ -503,6 +523,9 @@ function renderNavigating(){
       <button class="btn btn-primary" data-act="checkin">
         <i class="fa-solid fa-right-to-bracket"></i>Check in at gate
       </button>
+      <a class="btn btn-dark" href="https://www.google.com/maps/dir/?api=1&destination=${f.lat},${f.lng}&travelmode=driving" target="_blank" rel="noopener noreferrer" style="margin-top:10px">
+        <i class="fa-solid fa-diamond-turn-right"></i>Open in Google Maps
+      </a>
       <button class="btn btn-ghost" data-act="back" style="margin-top:10px">
         <i class="fa-solid fa-arrow-left"></i>Back
       </button>
@@ -605,18 +628,25 @@ function renderCheckout(){
 }
 
 /* ---------- actions ---------- */
+function clearRoute(){
+  UI.routeSeq++;
+  if (UI.routeLayer){ map.removeLayer(UI.routeLayer); UI.routeLayer = null; }
+}
+const fmtDistance = m => m < 1000 ? `${Math.round(m)} m` : `${(m/1000).toFixed(1)} km`;
+
 function selectFacility(id){
   const f = UI.facilitiesRaw.find(x=>x.id===id);
   if (!f) return;
+  clearRoute();
   UI.facilityId = id;
   UI.mode = 'facility';
   map.flyTo([f.lat, f.lng], 15.5, { duration:.7 });
   renderPanel();
 }
 function goBrowse(){
+  clearRoute();
   UI.mode = 'browse';
   UI.facilityId = null;
-  if (UI.routeLine){ map.removeLayer(UI.routeLine); UI.routeLine = null; }
   map.flyTo([21.0285,105.8542], 13.4, { duration:.6 });
   renderPanel();
 }
@@ -648,17 +678,81 @@ async function doWalkIn(f){
   } catch(e){ toast(e.message, 3000); }
 }
 
-function startNavigation(f){
+async function resolveStartPoint(f){
+  const fallback = { coords:[f.lat - 0.012, f.lng - 0.010], isGps:false };
+  if (!navigator.geolocation) return fallback;
+  try {
+    const pos = await new Promise((resolve, reject) =>
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy:true, timeout:2500, maximumAge:60_000,
+      })
+    );
+    const coords = [pos.coords.latitude, pos.coords.longitude];
+    // Keep in-app demo route local to Hanoi if user is testing remotely / via VPN
+    if (map.distance(coords, [f.lat, f.lng]) > 50_000) return fallback;
+    return { coords, isGps:true };
+  } catch {
+    return fallback;
+  }
+}
+
+async function fetchOsrmRoute(start, end){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), 5000);
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
+    const res = await fetch(url, { signal:ctrl.signal });
+    if (!res.ok) throw new Error('OSRM HTTP ' + res.status);
+    const data = await res.json();
+    const r = data.routes && data.routes[0];
+    if (!r || !r.geometry || !r.geometry.coordinates.length) throw new Error('No route');
+    return {
+      points: r.geometry.coordinates.map(([lng, lat])=>[lat, lng]),
+      distanceM: r.distance,
+      durationS: r.duration,
+      isFallback: false,
+    };
+  } catch {
+    return {
+      points: [start, end],
+      distanceM: map.distance(start, end),
+      durationS: null,
+      isFallback: true,
+    };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function startNavigation(f){
+  clearRoute();
+  const seq = UI.routeSeq;
   UI.mode = 'navigating';
   UI.facilityId = f.id;
   renderPanel();
-  if (UI.routeLine){ map.removeLayer(UI.routeLine); UI.routeLine = null; }
-  const start = [f.lat - 0.012, f.lng - 0.010];
-  const line = L.polyline([start, [f.lat, f.lng]], {
-    color:'#ff2e73', weight:5, opacity:.85, dashArray:'10 8',
-  }).addTo(map);
-  UI.routeLine = line;
-  map.fitBounds(line.getBounds(), { padding:[60,60] });
+
+  const { coords: start, isGps } = await resolveStartPoint(f);
+  if (seq !== UI.routeSeq) return;
+
+  const route = await fetchOsrmRoute(start, [f.lat, f.lng]);
+  if (seq !== UI.routeSeq) return;
+
+  const dash = route.isFallback ? '10 8' : undefined;
+  const casing = L.polyline(route.points, { color:'#ffffff', weight:8, opacity:.92, dashArray:dash });
+  const line = L.polyline(route.points, { color:'#ff2e73', weight:5, opacity:.95, dashArray:dash });
+  const startDot = L.circleMarker(start, {
+    radius:7, color:'#ffffff', weight:3, fillColor:'#12121c', fillOpacity:1,
+  }).bindTooltip(isGps ? 'Your location' : 'Demo start');
+
+  UI.routeLayer = L.layerGroup([casing, line, startDot]).addTo(map);
+  map.fitBounds(line.getBounds(), { padding:[70,70] });
+
+  const metaEl = document.getElementById('routeMeta');
+  if (metaEl){
+    const eta = route.durationS != null ? ` · ~${Math.max(1, Math.round(route.durationS / 60))} min` : '';
+    const src = isGps ? 'GPS' : 'Demo start';
+    metaEl.innerHTML = `<i class="fa-solid fa-route" style="color:var(--pink)"></i><span>${fmtDistance(route.distanceM)}${eta} (${src})</span>`;
+  }
 }
 
 async function doCheckIn(){
@@ -669,7 +763,7 @@ async function doCheckIn(){
       method:'POST', body:{ reservationId: UI.reservation.id },
     });
     UI.session = session;
-    if (UI.routeLine){ map.removeLayer(UI.routeLine); UI.routeLine = null; }
+    clearRoute();
     toast('Session started · Bay ' + session.bay);
     UI.mode = 'session';
     renderPanel();

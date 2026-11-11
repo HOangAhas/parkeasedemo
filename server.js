@@ -59,8 +59,18 @@ function saveDB(db){
 /* ============================================================
    PRICING (Decision 5794 aware)
    ============================================================ */
+const HANOI_TIME_FMT = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Ho_Chi_Minh',
+  hour: 'numeric',
+  minute: 'numeric',
+  hourCycle: 'h23',
+});
+
 function isPeak(date = new Date()){
-  const h = date.getHours() + date.getMinutes()/60;
+  const parts = HANOI_TIME_FMT.formatToParts(date);
+  const hh = Number(parts.find(p => p.type === 'hour').value);
+  const mm = Number(parts.find(p => p.type === 'minute').value);
+  const h = hh + mm/60;
   return (h >= 7 && h < 9) || (h >= 17 && h < 19.5);
 }
 
