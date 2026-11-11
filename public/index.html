@@ -86,11 +86,11 @@
   .wheel svg{width:100%;height:100%;transform:rotate(-90deg);display:block}
   .wheel .track{fill:none;stroke:#e4e4ee;stroke-width:11;stroke-linecap:round}
   .wheel .prog{fill:none;stroke:var(--pink);stroke-width:11;stroke-linecap:round;
-    filter:drop-shadow(0 0 6px var(--pink-glow));transition:stroke-dashoffset .08s linear}
+    filter:drop-shadow(0 0 6px var(--pink-glow))}
   .wheel .knob{position:absolute;width:24px;height:24px;border-radius:50%;background:#fff;
     border:5px solid var(--pink);top:50%;left:50%;margin:-12px 0 0 -12px;
     box-shadow:0 4px 14px var(--pink-glow);cursor:grab;transform-origin:center;
-    transform:translate(-50%,-50%) rotate(0deg) translateY(-54px)}
+    transform:rotate(0deg) translateY(-50.4px)}
   .wheel .knob:active{cursor:grabbing}
   .wheel-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
     justify-content:center;pointer-events:none}
@@ -491,7 +491,7 @@ function wireWheel(f){
     UI.hours = next;
     const p = (UI.hours - MIN) / (MAX - MIN);
     prog.style.strokeDashoffset = C * (1 - p);
-    knob.style.transform = `translate(-50%,-50%) rotate(${p*360}deg) translateY(-54px)`;
+    knob.style.transform = `rotate(${p*360}deg) translateY(-50.4px)`;
     valEl.textContent = UI.hours;
     renderQuote(localQuote(UI.hours));
     clearTimeout(quoteTimer);
