@@ -69,8 +69,10 @@ function saveDB(db){
 }
 
 /* ============================================================
-   PRICING (Decision 5794 aware)
+   PRICING (Decision 5794 & Report Pricing Model)
    ============================================================ */
+const BASE_BARRIER_FEE = 10000; // Phí mở barie tối thiểu (Flag-fall barrier unlock fee)
+
 const HANOI_TIME_FMT = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Asia/Ho_Chi_Minh',
   hour: 'numeric',
@@ -86,11 +88,14 @@ function isPeak(date = new Date()){
   return (h >= 7 && h < 9) || (h >= 17 && h < 19.5);
 }
 
-function priceFor(facility, hours){
+function priceFor(facility, hours, peak = isPeak()){
   const rate = facility.rate || 20000;
   const cap  = facility.cap  || 120000;
-  const mult = isPeak() ? 1.5 : 0.7;
-  return Math.min(Math.round(hours * rate * mult), cap);
+  const mult = peak ? 1.5 : 0.7;
+  const calculated = Math.round(hours * rate * mult);
+  // Mức sàn là phí mở barie tối thiểu (áp dụng cả khi vào bãi rồi ra ngay)
+  const withMin = Math.max(BASE_BARRIER_FEE, calculated);
+  return Math.min(withMin, cap);
 }
 
 /* ============================================================
@@ -133,21 +138,31 @@ app.get('/api/facilities/:id', async (req, res) => {
   res.json({ ...f, avail: availFor(db, f, now), peak: isPeak(), serverTime: now });
 });
 
-/* Quote: price for X hours at facility Y */
+/* Quote: price for X hours/minutes at facility Y */
 app.get('/api/quote', async (req, res) => {
   await sleep(jitter(40, 120));
-  const { facilityId, hours } = req.query;
+  const { facilityId } = req.query;
   const f = findFacility(facilityId);
   if (!f) return res.status(404).json({ error: 'Facility not found' });
-  const h = parseFloat(hours);
-  if (!h || h < 0.5 || h > 8) return res.status(400).json({ error: 'Hours must be 0.5–8' });
-  const total = priceFor(f, h);
+  const rawH = req.query.hours;
+  const rawM = req.query.minutes;
+  const h = rawM ? (Number(rawM) / 60) : parseFloat(rawH);
+  if (!h || h < 0.25 || h > 12) return res.status(400).json({ error: 'Duration must be 0.25–12 hours (15m–12h)' });
+  const peak = isPeak();
+  const mult = peak ? 1.5 : 0.7;
+  const rawCalculated = Math.round(h * f.rate * mult);
+  const total = priceFor(f, h, peak);
   res.json({
     facilityId,
-    hours: h,
+    hours: Number(h.toFixed(2)),
+    minutes: Math.round(h * 60),
+    rate: f.rate,
+    mult,
+    peak,
+    barrierBaseFee: BASE_BARRIER_FEE,
+    rawCalculated,
     total,
     deposit: Math.round(total * 0.5),
-    peak: isPeak(),
     cap: f.cap,
   });
 });
@@ -155,10 +170,11 @@ app.get('/api/quote', async (req, res) => {
 /* Create reservation hold (30 min) */
 app.post('/api/reservations', async (req, res) => {
   await sleep(jitter(150, 380));
-  const { facilityId, hours, plate } = req.body || {};
+  const { facilityId, hours, minutes, plate } = req.body || {};
   const f = findFacility(facilityId);
   if (!f) return res.status(404).json({ error: 'Facility not found' });
-  if (!hours || hours < 0.5 || hours > 8) return res.status(400).json({ error: 'Invalid hours' });
+  const h = minutes ? (Number(minutes) / 60) : parseFloat(hours);
+  if (!h || h < 0.25 || h > 12) return res.status(400).json({ error: 'Duration must be 0.25–12 hours (15m–12h)' });
   const cleanPlate = String(plate || '').trim().toUpperCase();
   if (!PLATE_RE.test(cleanPlate))
     return res.status(400).json({ error: 'Invalid plate format' });
@@ -169,12 +185,13 @@ app.post('/api/reservations', async (req, res) => {
     return res.status(409).json({ error: 'No free bays at this facility right now' });
   }
 
-  const total = priceFor(f, hours);
+  const total = priceFor(f, h);
   const resv = {
     id: rid('res'),
     facilityId,
     facilityName: f.name,
-    hours,
+    hours: Number(h.toFixed(2)),
+    minutes: Math.round(h * 60),
     plate: cleanPlate,
     total,
     deposit: Math.round(total * 0.5),
@@ -202,6 +219,34 @@ app.delete('/api/reservations/:id', async (req, res) => {
   res.json({ ok: true });
 });
 
+function issueForfeitInvoice(db, r, now = Date.now()){
+  const code = 'PE-NOSHOW-' + new Date(now).getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(1000 + Math.random() * 9000);
+  const invoice = {
+    id: rid('inv'),
+    lookupCode: code,
+    decree: '123/2020/NĐ-CP',
+    type: 'no_show_penalty',
+    issuedAt: new Date(now).toISOString(),
+    facilityName: r.facilityName,
+    plate: r.plate,
+    method: 'Khấu trừ tiền cọc (No-show fee)',
+    elapsedMinutes: 30,
+    elapsedHours: 0.5,
+    rate: 0,
+    surgeMult: 1,
+    isPeak: false,
+    barrierBaseFee: 0,
+    isBarrierBaseFeeApplied: false,
+    total: r.deposit,
+    deposit: r.deposit,
+    final: r.deposit,
+    note: 'Thu hồi 100% tiền đặt cọc giữ chỗ do quá 30 phút không đến nhận chỗ (Chính sách No-show trong Pricing Model)',
+    formula: `Thu hồi cọc: ${r.deposit} VND vì quá thời gian giữ chỗ 30 phút`,
+  };
+  db.invoices.push(invoice);
+  return invoice;
+}
+
 /* Get reservation */
 app.get('/api/reservations/:id', async (req, res) => {
   const db = loadDB();
@@ -209,10 +254,26 @@ app.get('/api/reservations/:id', async (req, res) => {
   if (!r) return res.status(404).json({ error: 'Not found' });
   const now = Date.now();
   if (r.status === 'held' && now > r.expiresAt) {
-    r.status = 'expired';
+    r.status = 'forfeited';
+    r.forfeitedAt = now;
+    issueForfeitInvoice(db, r, now);
     saveDB(db);
   }
   res.json({ ...r, serverTime: now });
+});
+
+/* Forfeit reservation deposit (No-show policy) */
+app.post('/api/reservations/:id/forfeit', async (req, res) => {
+  const db = loadDB();
+  const r = db.reservations[req.params.id];
+  if (!r) return res.status(404).json({ error: 'Reservation not found' });
+  if (r.status !== 'held') return res.status(400).json({ error: 'Reservation not active' });
+  const now = Date.now();
+  r.status = 'forfeited';
+  r.forfeitedAt = now;
+  const inv = issueForfeitInvoice(db, r, now);
+  saveDB(db);
+  res.json({ ok: true, forfeited: true, reservation: r, invoice: inv });
 });
 
 /* Check in → convert reservation to session */
@@ -291,26 +352,49 @@ app.post('/api/sessions/:id/checkout', async (req, res) => {
   const s = db.sessions[req.params.id];
   if (!s) return res.status(404).json({ error: 'Session not found' });
 
-  const elapsedMs = Math.max(0, Date.now() - s.startTs);
-  const elapsedHours = Math.max(0.5, elapsedMs / 3_600_000);
-  const total = priceFor({ rate:s.rate, cap:s.cap }, elapsedHours);
-  const final = Math.max(0, total - s.deposit);
+  const now = Date.now();
+  const elapsedMs = Math.max(0, now - s.startTs);
+  const elapsedMinutes = Math.max(1, Math.round(elapsedMs / 60_000));
+  const elapsedHours = Number((elapsedMs / 3_600_000).toFixed(2));
+  const peak = isPeak(new Date(now));
+  const mult = peak ? 1.5 : 0.7;
+
+  // Pricing model:
+  // 1. Phí theo giờ có hệ số cao/thấp điểm
+  const rawCalculated = Math.round((elapsedMs / 3_600_000) * s.rate * mult);
+  // 2. Vào ra ngay (< 5 phút hoặc 0 đồng) -> thu phí mở barie tối thiểu (như mở cửa taxi)
+  const isBarrierBaseFeeApplied = rawCalculated < BASE_BARRIER_FEE;
+  const total = Math.min(Math.max(BASE_BARRIER_FEE, rawCalculated), s.cap);
+  // 3. Khấu trừ 100% tiền cọc đã đóng trước
+  const depositCredit = s.deposit || 0;
+  const final = Math.max(0, total - depositCredit);
 
   const invoice = {
     id: rid('inv'),
     lookupCode:
-      'PE-' + new Date().getFullYear() + '-' +
+      'PE-' + new Date(now).getFullYear() + '-' +
       Math.floor(1000 + Math.random() * 9000) + '-' +
       Math.floor(1000 + Math.random() * 9000),
     decree: '123/2020/NĐ-CP',
-    issuedAt: new Date().toISOString(),
+    issuedAt: new Date(now).toISOString(),
     facilityName: s.facilityName,
     plate: s.plate,
     method,
+    elapsedMinutes,
     elapsedHours,
+    rate: s.rate,
+    surgeMult: mult,
+    isPeak: peak,
+    barrierBaseFee: BASE_BARRIER_FEE,
+    isBarrierBaseFeeApplied,
+    barrierBaseFeeApplied: isBarrierBaseFeeApplied,
+    rawCalculated,
     total,
-    deposit: s.deposit,
+    deposit: depositCredit,
     final,
+    formula: isBarrierBaseFeeApplied
+      ? `Áp dụng phí mở barie tối thiểu ${BASE_BARRIER_FEE.toLocaleString('vi-VN')} đ (vào ra ngay tức khắc < thời gian đỗ tối thiểu)`
+      : `Min(Max(${BASE_BARRIER_FEE}, ${elapsedHours}h × ${s.rate.toLocaleString('vi-VN')}đ × ${mult}), ${s.cap.toLocaleString('vi-VN')}đ) = ${total.toLocaleString('vi-VN')} đ`,
   };
 
   db.invoices.push(invoice);

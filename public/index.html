@@ -46,22 +46,79 @@
   .chip.active{background:var(--ink);border-color:var(--ink);color:#fff}
   .chip.active i{color:var(--pink)}
 
-  .pin{display:inline-flex;align-items:center;gap:6px;width:max-content;background:#fff;
-    border-radius:30px;padding:6px 11px;font-weight:800;font-size:.73rem;color:var(--ink);
-    white-space:nowrap;box-shadow:0 4px 16px rgba(18,18,28,.22);
-    border:1.5px solid rgba(18,18,28,.08);transform:translate(-50%,-50%);transition:transform .15s,background .15s,color .15s}
-  .leaflet-marker-icon:hover{z-index:1000!important}
-  .leaflet-marker-icon:hover .pin{transform:translate(-50%,-50%) scale(1.06)}
-  .pin .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
-  .pin .ev-ico{color:var(--pink);font-size:.66rem}
-  .pin.green .dot{background:var(--green)}
-  .pin.amber .dot{background:var(--amber)}
-  .pin.red .dot{background:var(--red)}
+  .pin{display:flex;flex-direction:column;align-items:flex-start;width:max-content;background:#fff;
+    border-radius:12px;padding:6px 10px;font-weight:800;color:var(--ink);
+    box-shadow:0 6px 20px rgba(18,18,28,.18);border:2px solid rgba(18,18,28,.12);
+    transform:translate(-50%,-50%);transition:transform .15s,box-shadow .15s,border-color .15s}
+  .pin.green{border-color:#0f8a4b}
+  .pin.amber{border-color:#b06a00}
+  .pin.red{border-color:#c02b25;background:#fff8f8}
+  .pin-top{display:flex;align-items:center;gap:6px;font-size:.72rem;line-height:1.2;font-weight:800}
+  .pin-name{max-width:135px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pin-bottom{display:flex;align-items:center;gap:5px;font-size:.64rem;color:var(--muted);font-weight:700;margin-top:2px}
+  .pin-sep{opacity:.5}
+  .pin.green .pin-avail{color:#0f8a4b}
+  .pin.amber .pin-avail{color:#b06a00}
+  .pin.red .pin-avail{color:#c02b25;font-weight:900}
+  .pin .dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+  .pin .pin-ev{color:var(--pink);font-size:.66rem;margin-left:2px}
+  .pin.green .dot{background:#0f8a4b}
+  .pin.amber .dot{background:#b06a00}
+  .pin.red .dot{background:#c02b25}
   .pin.selected{background:var(--pink);color:#fff;border-color:#fff;
-    box-shadow:0 8px 24px var(--pink-glow);transform:translate(-50%,-50%) scale(1.08)}
+    box-shadow:0 10px 28px var(--pink-glow);transform:translate(-50%,-50%) scale(1.08)}
+  .pin.selected .pin-bottom{color:rgba(255,255,255,.9)}
+  .pin.selected .pin-avail{color:#fff}
   .pin.selected .dot{background:#fff}
-  .pin.selected .ev-ico{color:#fff}
-  .leaflet-marker-icon:hover .pin.selected{transform:translate(-50%,-50%) scale(1.11)}
+  .pin.selected .pin-ev{color:#fff}
+  .leaflet-marker-icon:hover{z-index:1000!important}
+  .leaflet-marker-icon:hover .pin{transform:translate(-50%,-50%) scale(1.08);box-shadow:0 12px 30px rgba(18,18,28,.28)}
+
+  .custom-leaflet-tooltip{background:#12121c!important;color:#fff!important;border:none!important;
+    border-radius:14px!important;padding:12px 14px!important;box-shadow:0 12px 32px rgba(0,0,0,.35)!important;
+    font-family:inherit!important}
+  .custom-leaflet-tooltip::before{border-top-color:#12121c!important}
+  .pin-tooltip{display:flex;flex-direction:column;gap:5px;min-width:180px}
+  .pt-hdr{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .pt-hdr b{font-size:.84rem;font-weight:800;color:#fff}
+  .pt-addr{font-size:.68rem;color:rgba(255,255,255,.7);font-weight:500}
+  .pt-meta{display:flex;gap:10px;font-size:.68rem;color:rgba(255,255,255,.9);font-weight:700;margin-top:4px}
+  .pt-meta i{color:var(--pink)}
+  .pt-hint{font-size:.62rem;color:var(--pink);font-weight:800;margin-top:4px;display:flex;align-items:center;gap:4px}
+
+  .rec-section{background:linear-gradient(135deg,#f8f9ff,#fff5f8);border:1.5px solid #e2e4f4;
+    border-radius:18px;padding:14px;margin-bottom:14px}
+  .rec-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .rec-title{font-size:.74rem;font-weight:800;color:var(--ink);text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px}
+  .rec-title i{color:var(--pink)}
+  .rec-grid{display:flex;flex-direction:column;gap:8px}
+  .rec-card{background:#fff;border:1px solid #e6e8f2;border-radius:14px;padding:10px 12px;
+    cursor:pointer;transition:.15s;display:flex;flex-direction:column;gap:4px}
+  .rec-card:hover{border-color:var(--pink);transform:translateY(-1px);box-shadow:0 6px 16px rgba(255,46,115,.12)}
+  .rec-top{display:flex;justify-content:space-between;align-items:center}
+  .rec-tag{font-size:.62rem;font-weight:800;padding:2px 7px;border-radius:12px;display:inline-flex;align-items:center;gap:4px}
+  .rec-tag.best{background:#eef2ff;color:#3b5bf6}
+  .rec-tag.price{background:#e6f8ee;color:#0f8a4b}
+  .rec-tag.near{background:#fff3e0;color:#b06a00}
+  .rec-name{font-size:.84rem;font-weight:800;color:var(--ink);margin-top:2px}
+  .rec-reason{font-size:.66rem;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px}
+
+  .wheel-presets{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;margin:10px 0 4px}
+  .wp-btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 8px;
+    font-size:.66rem;font-weight:700;color:var(--ink);cursor:pointer;transition:.15s}
+  .wp-btn:hover{background:var(--pink-soft);border-color:var(--pink);color:var(--pink)}
+
+  .pricing-card{background:#f8f9fd;border:1px solid #e0e4f0;border-radius:16px;padding:12px 14px;margin:12px 0}
+  .pricing-hdr{display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+  .pricing-hdr b{font-size:.76rem;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:6px}
+  .pricing-hdr i.arr{color:var(--muted);font-size:.7rem;transition:transform .2s}
+  .pricing-hdr.open i.arr{transform:rotate(180deg)}
+  .pricing-body{font-size:.72rem;color:#4a5066;margin-top:10px;line-height:1.45;display:none}
+  .pricing-body.show{display:block}
+  .formula-box{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:8px 0;font-family:monospace;font-size:.72rem;color:var(--ink)}
+  .pricing-cases{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .pc-item{display:flex;flex-direction:column;gap:3px;font-size:.7rem;line-height:1.4}
+  .rule-pill{display:inline-block;width:max-content;background:#eef2ff;color:#3b5bf6;font-size:.62rem;font-weight:800;padding:2px 6px;border-radius:6px;margin-bottom:2px}
 
   .sidebar{background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column;
     overflow-y:auto;padding:24px;position:relative}
@@ -500,6 +557,32 @@ const I18N = {
     einvoiceOfficial: 'HÓA ĐƠN ĐIỆN TỬ DỊCH VỤ TRÔNG GIỮ XE',
     signedNote: 'Hóa đơn đã ký số điện tử hợp lệ theo NĐ 123/2020/NĐ-CP',
     closeModal: 'Đóng',
+    baysShort: 'chỗ',
+    fullShort: 'HẾT CHỖ',
+    clickToSelect: 'Nhấp để xem chi tiết & đặt chỗ',
+    smartRecTitle: 'Gợi ý thông minh cho bạn',
+    aiRanked: 'Đề xuất tối ưu',
+    bestOverall: 'Tối ưu nhất',
+    bestPrice: 'Tiết kiệm nhất',
+    closest: 'Gần bạn nhất',
+    recReasonBest: (d, a) => `Cách ${d} · Còn ${a} chỗ · Cân bằng tốt nhất`,
+    recReasonPrice: (r, d) => `Từ ${r}/h · Cách ${d} · Tiết kiệm nhất`,
+    recReasonClose: (d, a) => `Chỉ cách ${d} · Còn ${a} chỗ · Di chuyển nhanh`,
+    pricingModelTitle: 'Mô hình định giá ParkEase (EXE101 Pricing Model)',
+    pricingFormulaHeader: 'Công thức tính tiền minh bạch:',
+    barrierFee: 'Phí mở barie tối thiểu',
+    baseRate: 'Đơn giá cơ bản',
+    depositForfeitedToast: v => `Quá 30 phút: Đã thu hồi ${v} tiền cọc do vắng mặt`,
+    noShowTitle: 'Thu hồi tiền cọc do quá giờ (No-show)',
+    noShowDesc: (n, v) => `Bạn đã đặt giữ chỗ tại ${n} nhưng không đến check-in trong 30 phút. Theo quy định trong Báo cáo Định giá (Pricing Model), toàn bộ tiền cọc ${v} đã được thu hồi và ô đỗ đã mở lại cho tài xế khác.`,
+    viewPenaltyInvoice: 'Xem biên lai phạt cọc',
+    barrierFeeAppliedHint: '(Áp dụng phí mở barie tối thiểu cho xe vào ra ngay)',
+    presetMin: m => `${m}m`,
+    presetHr: h => `${h}h`,
+    estStay: 'Thời gian dự kiến đỗ',
+    forfeitReceiptTitle: 'BIÊN LAI THU HỒI CỌC (NO-SHOW)',
+    forfeitReason: 'Không đến nhận chỗ đỗ trong thời hạn 30 phút theo Quy tắc Báo cáo Định giá EXE101',
+    forfeitDeductNote: 'Thu hồi 100% cọc giữ chỗ',
   },
   en: {
     title: 'ParkEase — Hanoi Smart Parking',
@@ -630,6 +713,32 @@ const I18N = {
     einvoiceOfficial: 'E-INVOICE FOR VEHICLE PARKING SERVICE',
     signedNote: 'Digitally signed under Decree 123/2020/NĐ-CP',
     closeModal: 'Close',
+    baysShort: 'bays',
+    fullShort: 'FULL',
+    clickToSelect: 'Click to view details & book',
+    smartRecTitle: 'Smart Recommended for You',
+    aiRanked: 'AI Ranked',
+    bestOverall: 'Best Overall',
+    bestPrice: 'Lowest Rate',
+    closest: 'Closest',
+    recReasonBest: (d, a) => `${d} away · ${a} free bays · Best balance`,
+    recReasonPrice: (r, d) => `From ${r}/hr · ${d} away · Great value`,
+    recReasonClose: (d, a) => `Only ${d} away · ${a} bays · Fastest arrival`,
+    pricingModelTitle: 'ParkEase Pricing Model (EXE101 Report)',
+    pricingFormulaHeader: 'Transparent Pricing Formula:',
+    barrierFee: 'Barrier minimum unlock fee',
+    baseRate: 'Base hourly rate',
+    depositForfeitedToast: v => `Hold expired: ${v} deposit forfeited due to no-show`,
+    noShowTitle: 'Deposit Forfeited (No-show Policy)',
+    noShowDesc: (n, v) => `You reserved a bay at ${n} but did not arrive within 30 minutes. Under our Pricing Model policy, your ${v} deposit has been forfeited and the bay released.`,
+    viewPenaltyInvoice: 'View forfeit receipt',
+    barrierFeeAppliedHint: '(Minimum barrier fee applied for quick turn-around)',
+    presetMin: m => `${m}m`,
+    presetHr: h => `${h}h`,
+    estStay: 'Planned parking duration',
+    forfeitReceiptTitle: 'NO-SHOW DEPOSIT FORFEITURE RECEIPT',
+    forfeitReason: 'Did not arrive within 30 minutes under EXE101 Pricing Model policy',
+    forfeitDeductNote: '100% reservation deposit forfeited',
   },
 };
 
@@ -646,6 +755,7 @@ const UI = {
   busy: false,
   mode: 'browse',       // browse | facility | navigating | session | checkout
   facilityId: null,
+  minutes: 120,
   hours: 2,
   filter: 'all',
   search: '',
@@ -695,6 +805,14 @@ function toast(msg, ms=2000){
 const fmtVND = n => n.toLocaleString('vi-VN') + ' VND';
 const fmtDuration = h => {
   const hh = Math.floor(h), mm = Math.round((h-hh)*60);
+  return `${hh}h ${String(mm).padStart(2,'0')}m`;
+};
+const fmtMinutesToHhMm = min => {
+  const m = Math.max(1, Math.round(min));
+  const hh = Math.floor(m / 60);
+  const mm = m % 60;
+  if (hh === 0) return `${mm}m`;
+  if (mm === 0) return `${hh}h`;
   return `${hh}h ${String(mm).padStart(2,'0')}m`;
 };
 const fmtClock = ms => {
@@ -897,9 +1015,45 @@ function filterList(list){
 function makePinIcon(f){
   const cls = pinClass(f);
   const sel = f.id === UI.facilityId ? ' selected' : '';
-  const ev = f.ev ? '<i class="fa-solid fa-bolt ev-ico"></i>' : '';
-  const html = `<div class="pin ${cls}${sel}"><span class="dot"></span>${ev}${f.avail} / ${f.total}</div>`;
+  const isFull = f.avail <= 0;
+  const availText = isFull ? esc(T('fullShort')) : `${f.avail}/${f.total} ${esc(T('baysShort'))}`;
+  const distText = f.distM != null ? fmtDistance(f.distM) : '';
+  const ev = f.ev ? '<i class="fa-solid fa-bolt pin-ev" title="EV"></i>' : '';
+  const html = `
+    <div class="pin ${cls}${sel}">
+      <div class="pin-top">
+        <span class="dot"></span>
+        <span class="pin-name">${esc(f.name)}</span>
+        ${ev}
+      </div>
+      <div class="pin-bottom">
+        <span class="pin-avail">${availText}</span>
+        ${distText ? `<span class="pin-sep">·</span><span class="pin-dist">${distText}</span>` : ''}
+      </div>
+    </div>`;
   return L.divIcon({ className:'', html, iconSize:[0,0], iconAnchor:[0,0] });
+}
+
+function makeMarkerTooltip(f){
+  const cls = pinClass(f);
+  const label = statusLabel(f);
+  const distText = f.distM != null ? fmtDistance(f.distM) : '';
+  const rateText = fmtVND(f.rate) + '/h';
+  return `
+    <div class="pin-tooltip">
+      <div class="pt-hdr">
+        <b>${esc(f.name)}</b>
+        <span class="badge ${cls}" style="margin:0;font-size:.62rem;padding:2px 6px">${esc(label)}</span>
+      </div>
+      <div class="pt-addr"><i class="fa-solid fa-location-dot" style="color:var(--pink);margin-right:4px"></i>${esc(f.addr)}</div>
+      <div class="pt-meta">
+        <span><i class="fa-solid fa-car"></i> ${esc(T('freeCount', f.avail))}</span>
+        <span><i class="fa-solid fa-tag"></i> ${rateText}</span>
+        ${f.maxHeight ? `<span><i class="fa-solid fa-arrows-up-down"></i> ${esc(f.maxHeight)}</span>` : ''}
+        ${distText ? `<span><i class="fa-solid fa-route"></i> ${distText}</span>` : ''}
+      </div>
+      <div class="pt-hint"><i class="fa-solid fa-arrow-pointer"></i> ${esc(T('clickToSelect'))}</div>
+    </div>`;
 }
 
 function syncMarkers(visible){
@@ -908,13 +1062,20 @@ function syncMarkers(visible){
   UI.facilitiesRaw.forEach(f=>{
     const selected = f.id === UI.facilityId;
     const icon = makePinIcon(f);
+    const tooltipHtml = makeMarkerTooltip(f);
     let m = markers[f.id];
     if (!m) {
       m = L.marker([f.lat, f.lng], { icon });
+      m.bindTooltip(tooltipHtml, {
+        direction: 'top',
+        offset: [0, -18],
+        className: 'custom-leaflet-tooltip',
+      });
       m.on('click', ()=>selectFacility(f.id));
       markers[f.id] = m;
     } else {
       m.setIcon(icon);
+      m.setTooltipContent(tooltipHtml);
     }
     m.setZIndexOffset(selected ? 900 : 0);
     const shouldShow = showIds.has(f.id);
@@ -922,6 +1083,136 @@ function syncMarkers(visible){
     if (shouldShow && !onMap) m.addTo(map);
     else if (!shouldShow && onMap) map.removeLayer(m);
   });
+}
+
+function renderPricingExplainerHTML(defaultOpen = false){
+  const openClass = defaultOpen ? ' show' : '';
+  const openHdr = defaultOpen ? ' open' : '';
+  const vi = UI.lang === 'vi';
+  return `
+    <div class="pricing-card" id="pricingCard">
+      <div class="pricing-hdr${openHdr}" id="pricingToggle">
+        <span class="title">
+          <i class="fa-solid fa-scale-balanced" style="color:var(--pink)"></i>
+          ${esc(T('pricingModelTitle'))}
+        </span>
+        <i class="fa-solid fa-chevron-down arr"></i>
+      </div>
+      <div class="pricing-body${openClass}" id="pricingBody">
+        <div style="font-weight:700;color:var(--ink);margin-bottom:4px">
+          ${esc(T('pricingFormulaHeader'))}
+        </div>
+        <div class="formula-box">
+          <b>Total</b> = min(max(10.000₫, Hours × Rate × Mult), Cap)<br/>
+          <b>Due</b> = max(0, Total - Deposit)
+        </div>
+        <div class="pricing-cases">
+          <div class="pc-item">
+            <span class="rule-pill">${vi ? 'Quy tắc 1: Đặt trước & Khấu trừ cọc 50%' : 'Rule 1: Reservation & 50% Deposit Deduction'}</span>
+            <span>${vi
+              ? 'Tài xế đặt giữ chỗ cần cọc 50% tiền dự kiến. Khi hoàn tất gửi xe (check-out), <b>100% tiền cọc được trừ thẳng</b> vào tổng hóa đơn thanh toán.'
+              : 'Drivers reserving a bay pay 50% planned deposit. At checkout, <b>100% of this deposit is deducted</b> from total invoice.'}</span>
+          </div>
+          <div class="pc-item">
+            <span class="rule-pill" style="background:#fff1f0;color:#c02b25">${vi ? 'Quy tắc 2: Giữ chỗ quá 30 phút không đến (Thu hồi cọc)' : 'Rule 2: 30-min No-Show (Deposit Forfeited)'}</span>
+            <span>${vi
+              ? 'Thời hạn giữ chỗ tối đa là <b>30 phút</b>. Nếu quá giờ tài xế không đến check-in, <b>100% tiền cọc sẽ bị thu hồi</b> để bù chi phí giữ slot và chống giữ chỗ ảo.'
+              : 'Bay holds expire after <b>30 minutes</b>. If no-show, <b>100% of deposit is forfeited</b> to compensate locked slot and prevent phantom reservations.'}</span>
+          </div>
+          <div class="pc-item">
+            <span class="rule-pill" style="background:#e6f8ee;color:#0f8a4b">${vi ? 'Quy tắc 3: Vào ra ngay lập tức (Phí mở barie tối thiểu)' : 'Rule 3: Immediate Exit (Base Barrier Unlock Fee)'}</span>
+            <span>${vi
+              ? 'Trường hợp xe vào bãi rồi ra ngay (0 phút hoặc &lt; 5 phút), hệ thống áp dụng <b>Phí mở barie tối thiểu = 10.000 VND</b> (tương tự giá mở cửa taxi) bù đắp chi phí nâng hạ barie và nhận diện ANPR.'
+              : 'Cars entering and leaving immediately (&lt; 5 mins) are charged a <b>Minimum Barrier Unlock Fee = 10,000 VND</b> (flag-fall rate) covering ANPR gate ops.'}</span>
+          </div>
+        </div>
+        <div style="margin-top:8px;font-size:.66rem;color:#7c829c;display:flex;gap:8px;flex-wrap:wrap">
+          <span>• ${vi ? 'Cao điểm (07:00-09:00, 16:30-19:00): Hệ số 1.5x' : 'Peak (07:00-09:00, 16:30-19:00): Mult 1.5x'}</span>
+          <span>• ${vi ? 'Thấp điểm: Hệ số 0.7x' : 'Off-peak: Mult 0.7x'}</span>
+          <span>• ${vi ? 'Giá trần ngày: 120.000₫ - 150.000₫' : 'Daily cap: 120,000₫ - 150,000₫'}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function wirePricingExplainer(){
+  const toggle = panelEl.querySelector('#pricingToggle');
+  const body = panelEl.querySelector('#pricingBody');
+  if (toggle && body) {
+    toggle.addEventListener('click', ()=>{
+      const isShow = body.classList.toggle('show');
+      toggle.classList.toggle('open', isShow);
+    });
+  }
+}
+
+function getSmartRecommendations(){
+  const pool = UI.facilitiesRaw.filter(f => f.avail > 0);
+  if (!pool.length) return [];
+  const center = UI.userCoords || HANOI_CENTER;
+  const withDist = pool.map(f => ({
+    ...f,
+    distM: map ? Math.round(map.distance([f.lat, f.lng], center)) : (f.distM || 1000),
+  }));
+
+  const maxDist = Math.max(...withDist.map(f => f.distM), 1000);
+  const minDist = Math.min(...withDist.map(f => f.distM), 0);
+  const maxRate = Math.max(...withDist.map(f => f.rate), 30000);
+  const minRate = Math.min(...withDist.map(f => f.rate), 10000);
+
+  const scored = withDist.map(f => {
+    const sDist = 1 - (f.distM - minDist) / (maxDist - minDist || 1);
+    const sRate = 1 - (f.rate - minRate) / (maxRate - minRate || 1);
+    const sAvail = Math.min(1, f.avail / (f.total || 1));
+    const totalScore = sDist * 0.45 + sRate * 0.35 + sAvail * 0.20;
+    return { ...f, totalScore };
+  });
+
+  scored.sort((a, b) => b.totalScore - a.totalScore);
+  const best = scored[0];
+
+  const closest = [...withDist].sort((a, b) => a.distM - b.distM).find(f => f.id !== best.id) || withDist[0];
+  const lowestRate = [...withDist].sort((a, b) => a.rate - b.rate).find(f => f.id !== best.id && f.id !== closest.id) || withDist[0];
+
+  const recs = [
+    { type: 'best', tag: T('bestOverall'), icon: 'fa-star', f: best, reason: T('recReasonBest', fmtDistance(best.distM), best.avail) },
+  ];
+  if (closest && closest.id !== best.id) {
+    recs.push({ type: 'close', tag: T('closest'), icon: 'fa-location-dot', f: closest, reason: T('recReasonClose', fmtDistance(closest.distM), closest.avail) });
+  }
+  if (lowestRate && lowestRate.id !== best.id && (!closest || lowestRate.id !== closest.id)) {
+    recs.push({ type: 'price', tag: T('bestPrice'), icon: 'fa-tag', f: lowestRate, reason: T('recReasonPrice', fmtVND(lowestRate.rate), fmtDistance(lowestRate.distM)) });
+  }
+  return recs;
+}
+
+function renderSmartRecommendationsHTML(){
+  const recs = getSmartRecommendations();
+  if (!recs.length) return '';
+  return `
+    <div class="rec-section">
+      <div class="rec-hdr">
+        <span class="rec-title"><i class="fa-solid fa-wand-magic-sparkles"></i> ${esc(T('smartRecTitle'))}</span>
+        <span style="font-size:.62rem;font-weight:700;color:var(--pink);background:#fff;padding:2px 8px;border-radius:10px;border:1px solid #ffd0e0">${esc(T('aiRanked'))}</span>
+      </div>
+      <div class="rec-grid">
+        ${recs.map(r => `
+          <div class="rec-card" data-rec-fid="${esc(r.f.id)}">
+            <div class="rec-top">
+              <span class="rec-tag ${r.type}"><i class="fa-solid ${r.icon}"></i> ${esc(r.tag)}</span>
+              <span style="font-size:.72rem;font-weight:800;color:var(--pink)">${fmtVND(r.f.rate)}/h</span>
+            </div>
+            <div style="font-size:.84rem;font-weight:800;color:var(--ink);margin-top:2px">${esc(r.f.name)}</div>
+            <div class="rec-meta">
+              <span><i class="fa-solid fa-car" style="color:var(--pink)"></i> ${esc(T('freeCount', r.f.avail))}</span>
+              <span><i class="fa-solid fa-route" style="color:var(--pink)"></i> ${fmtDistance(r.f.distM)}</span>
+              ${r.f.ev ? `<span><i class="fa-solid fa-bolt" style="color:var(--pink)"></i> EV</span>` : ''}
+            </div>
+            <div style="font-size:.64rem;color:#7c829c;margin-top:2px">${esc(r.reason)}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
 }
 
 /* ---------- panel renderers ---------- */
@@ -975,6 +1266,9 @@ function renderBrowse(){
   panelEl.innerHTML = `
     <div class="panel">
       ${activeBannerHTML()}
+      ${renderSmartRecommendationsHTML()}
+      ${renderPricingExplainerHTML(false)}
+
       <p style="font-size:.72rem;font-weight:800;text-transform:uppercase;
           letter-spacing:.07em;color:var(--muted);margin-bottom:8px">
         ${esc(T('stopsNearby', list.length))}
@@ -1020,6 +1314,10 @@ function renderBrowse(){
       }).join('') : `<div class="empty"><i class="fa-solid fa-parking"></i><p>${esc(T('emptyFilter'))}</p></div>`}
     </div>`;
   wireActiveBanner();
+  wirePricingExplainer();
+  panelEl.querySelectorAll('.rec-card').forEach(el=>{
+    el.addEventListener('click', ()=>selectFacility(el.dataset.recFid));
+  });
   const sb = panelEl.querySelector('#sortBar');
   if (sb) {
     sb.addEventListener('click', e => {
@@ -1117,13 +1415,26 @@ function renderFacility(){
             <circle class="prog" id="wheelProg" cx="50" cy="50" r="42"></circle>
           </svg>
           <div class="knob" id="wheelKnob"></div>
-          <div class="wheel-center"><b id="wheelVal">${UI.hours}</b><small>${esc(T('hrsUnit'))}</small></div>
+          <div class="wheel-center">
+            <b id="wheelVal">${fmtMinutesToHhMm(UI.minutes)}</b>
+            <small id="wheelValSub">${UI.minutes} ${esc(T('minSuffix'))}</small>
+          </div>
         </div>
         <div class="price-box">
           <div class="lbl">${esc(T('estTotal'))}</div>
           <div class="amt" id="amtBox">…</div>
           <div class="tier off" id="tierBox">…</div>
         </div>
+      </div>
+
+      <div class="wheel-presets" id="wheelPresets">
+        <button type="button" class="wp-btn" data-step="-15">-15m</button>
+        <button type="button" class="wp-btn" data-step="+15">+15m</button>
+        <button type="button" class="wp-btn" data-step="+30">+30m</button>
+        <button type="button" class="wp-btn" data-min="60">1h</button>
+        <button type="button" class="wp-btn" data-min="120">2h</button>
+        <button type="button" class="wp-btn" data-min="180">3h</button>
+        <button type="button" class="wp-btn" data-min="240">4h</button>
       </div>
 
       <div class="field">
@@ -1135,6 +1446,8 @@ function renderFacility(){
       <div class="kv"><span><i class="fa-solid fa-shield-halved" style="color:var(--pink);margin-right:6px"></i>${esc(T('holdDep'))}</span><strong id="depBox">—</strong></div>
       <div class="kv total"><span>${esc(T('bookingFee'))}</span><strong style="color:var(--green)">0 VND</strong></div>
 
+      ${renderPricingExplainerHTML(false)}
+
       <div class="divider"></div>
       <button class="btn btn-primary" data-act="reserve" ${isFull ? 'disabled' : ''}><i class="fa-solid fa-lock"></i>${esc(isFull ? T('full') : T('reserveBtn'))}</button>
       <button class="btn btn-dark" data-act="walkin" style="margin-top:10px" ${isFull ? 'disabled' : ''}>
@@ -1145,6 +1458,7 @@ function renderFacility(){
 
   wireActiveBanner();
   wireWheel(f);
+  wirePricingExplainer();
   panelEl.querySelector('#plateInput').addEventListener('input', e=>{
     UI.plate = e.target.value.trim().toUpperCase();
   });
@@ -1161,10 +1475,11 @@ function renderFacility(){
 
 function wireWheel(f){
   const wheel = $('#wheel'), prog = $('#wheelProg'), knob = $('#wheelKnob');
-  const valEl = $('#wheelVal'), amtEl = $('#amtBox'), tierEl = $('#tierBox'), depEl = $('#depBox');
+  const valEl = $('#wheelVal'), valSubEl = $('#wheelValSub'), amtEl = $('#amtBox'), tierEl = $('#tierBox'), depEl = $('#depBox');
   const R = 42, C = 2 * Math.PI * R;
   prog.style.strokeDasharray = C;
-  const MIN = 0.5, MAX = 8;
+  const MIN_MIN = 15, MAX_MIN = 480;
+  const BASE_BARRIER_FEE = 10000;
   let dragging = false;
   let quoteSeq = 0;
   let quoteCtrl = null;
@@ -1177,38 +1492,53 @@ function wireWheel(f){
     tierEl.innerHTML = `<i class="fa-solid fa-arrow-${q.peak?'up':'down'}"></i> ${esc(q.peak ? T('tierPeak') : T('tierOff'))}`;
   }
 
-  function localQuote(hours){
+  function localQuote(minutes){
+    const hours = Math.max(0.25, minutes / 60);
     const mult = UI.peak ? 1.5 : 0.7;
-    const total = Math.min(Math.round(hours * (f.rate || 20000) * mult), f.cap || 120000);
+    const raw = Math.round(hours * (f.rate || 20000) * mult);
+    const total = Math.min(Math.max(BASE_BARRIER_FEE, raw), f.cap || 120000);
     return { total, deposit: Math.round(total * 0.5), peak: UI.peak };
   }
 
-  async function refresh(hours){
+  async function refresh(minutes){
     const seq = ++quoteSeq;
     if (quoteCtrl) quoteCtrl.abort();
     quoteCtrl = new AbortController();
     try {
-      const q = await api(`/api/quote?facilityId=${f.id}&hours=${hours}`, { signal: quoteCtrl.signal });
+      const q = await api(`/api/quote?facilityId=${f.id}&minutes=${minutes}`, { signal: quoteCtrl.signal });
       if (seq !== quoteSeq || !amtEl.isConnected) return;
       UI.peak = q.peak;
       renderQuote(q);
     } catch(e){ /* ignore aborted or transient quote errors */ }
   }
 
-  function setHours(h, force = false){
-    const next = Math.max(MIN, Math.min(MAX, h));
-    if (!force && next === UI.hours) return;
-    UI.hours = next;
-    const p = (UI.hours - MIN) / (MAX - MIN);
+  function syncPresetBtns(curMin){
+    const wrap = document.getElementById('wheelPresets');
+    if (!wrap) return;
+    wrap.querySelectorAll('.wp-btn[data-min]').forEach(btn => {
+      btn.classList.toggle('active', Number(btn.dataset.min) === curMin);
+    });
+  }
+
+  function setMinutes(m, force = false){
+    const next = Math.max(MIN_MIN, Math.min(MAX_MIN, Math.round(m)));
+    if (!force && next === UI.minutes) return;
+    UI.minutes = next;
+    UI.hours = Math.round((next / 60) * 100) / 100;
+
+    const p = (UI.minutes - MIN_MIN) / (MAX_MIN - MIN_MIN);
     prog.style.strokeDashoffset = C * (1 - p);
     knob.style.transform = `rotate(${p*360}deg) translateY(-50.4px)`;
-    valEl.textContent = UI.hours;
-    renderQuote(localQuote(UI.hours));
+    valEl.textContent = fmtMinutesToHhMm(UI.minutes);
+    if (valSubEl) valSubEl.textContent = `${UI.minutes} ${T('minSuffix')}`;
+    syncPresetBtns(UI.minutes);
+
+    renderQuote(localQuote(UI.minutes));
     clearTimeout(quoteTimer);
     if (force) {
-      refresh(UI.hours);
+      refresh(UI.minutes);
     } else {
-      quoteTimer = setTimeout(() => refresh(UI.hours), 100);
+      quoteTimer = setTimeout(() => refresh(UI.minutes), 80);
     }
   }
 
@@ -1222,15 +1552,35 @@ function wireWheel(f){
   function onMove(e){
     if (!dragging) return;
     const a = angle(e.touches ? e.touches[0] : e);
-    setHours(Math.round((MIN + (a/360)*(MAX-MIN)) * 2) / 2);
+    const rawMin = MIN_MIN + (a / 360) * (MAX_MIN - MIN_MIN);
+    const snapped = Math.round(rawMin / 5) * 5;
+    setMinutes(snapped);
   }
-  function start(e){ e.preventDefault(); dragging = true; document.body.style.userSelect='none';
-    window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end); onMove(e); }
-  function end(){ dragging = false; document.body.style.userSelect='';
-    window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', end); window.removeEventListener('pointercancel', end); }
+  function start(e){
+    e.preventDefault(); dragging = true; document.body.style.userSelect='none';
+    window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end); onMove(e);
+  }
+  function end(){
+    dragging = false; document.body.style.userSelect='';
+    window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', end); window.removeEventListener('pointercancel', end);
+  }
   wheel.addEventListener('pointerdown', start);
 
-  setHours(UI.hours, true);
+  const presetsWrap = document.getElementById('wheelPresets');
+  if (presetsWrap) {
+    presetsWrap.addEventListener('click', e => {
+      const btn = e.target.closest('.wp-btn');
+      if (!btn) return;
+      if (btn.dataset.min) {
+        setMinutes(Number(btn.dataset.min));
+      } else if (btn.dataset.step) {
+        const step = Number(btn.dataset.step);
+        setMinutes(UI.minutes + step);
+      }
+    });
+  }
+
+  setMinutes(UI.minutes || 120, true);
 }
 
 function renderNavigating(){
@@ -1352,11 +1702,15 @@ function renderCheckout(){
   const s = UI.session;
   if (!s) { UI.mode='browse'; return renderBrowse(); }
   const elapsedMs = Math.max(0, serverNow() - s.startTs);
-  const elapsedHours = Math.max(0.5, elapsedMs / 3_600_000);
+  const elapsedMinutes = Math.max(1, Math.round(elapsedMs / 60_000));
+  const elapsedHours = Math.max(0.25, elapsedMinutes / 60);
   const mult = UI.peak ? 1.5 : 0.7;
-  const estTotal = Math.min(Math.round(elapsedHours * s.rate * mult), s.cap);
+  const BASE_BARRIER_FEE = 10000;
+  const rawCalc = Math.round(elapsedHours * s.rate * mult);
+  const estTotal = Math.min(Math.max(BASE_BARRIER_FEE, rawCalc), s.cap);
+  const isBarrierFeeApplied = rawCalc < BASE_BARRIER_FEE;
   const estDue = Math.max(0, estTotal - s.deposit);
-  // preview (server is source of truth on submit)
+
   panelEl.innerHTML = `
     <div class="panel">
       <button class="btn btn-ghost" data-act="back" style="margin-bottom:16px;font-size:.82rem;padding:10px">
@@ -1365,10 +1719,17 @@ function renderCheckout(){
       <h2 style="font-size:1.15rem;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">${T('checkoutTitle')}</h2>
       <p class="hint" style="text-align:left;margin:0 0 16px">${T('invoiceSub')}</p>
 
-      <div class="kv"><span>${T('duration')}</span><strong>${fmtDuration(elapsedHours)}</strong></div>
+      <div class="kv"><span>${T('duration')}</span><strong>${fmtMinutesToHhMm(elapsedMinutes)} (${elapsedMinutes} ${T('minSuffix')})</strong></div>
+      <div class="kv"><span>${T('baseRate')}</span><strong>${fmtVND(s.rate)}/h</strong></div>
       <div class="kv"><span>${T('estTotal')}</span><strong>${fmtVND(estTotal)}</strong></div>
+      ${isBarrierFeeApplied ? `
+        <div style="font-size:.66rem;color:#b06a00;font-weight:700;margin:-4px 0 8px;padding-left:4px">
+          <i class="fa-solid fa-circle-info"></i> ${esc(T('barrierFeeAppliedHint'))}
+        </div>` : ''}
       <div class="kv"><span>${T('depDeduct')}</span><strong>−${fmtVND(s.deposit)}</strong></div>
       <div class="kv total"><span>${T('estDue')}</span><strong>${fmtVND(estDue)}</strong></div>
+
+      ${renderPricingExplainerHTML(true)}
 
       <div class="divider"></div>
       <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;
@@ -1390,6 +1751,7 @@ function renderCheckout(){
       <p class="hint">${T('serverTotalHint')}</p>
     </div>`;
 
+  wirePricingExplainer();
   panelEl.querySelectorAll('[data-pay]').forEach(el=>{
     el.addEventListener('click', ()=>{
       UI.selectedPay = el.dataset.pay;
@@ -1458,7 +1820,12 @@ async function createReservation(f, plate){
   }
   return api('/api/reservations', {
     method:'POST',
-    body: { facilityId: f.id, hours: UI.hours, plate },
+    body: {
+      facilityId: f.id,
+      minutes: UI.minutes,
+      hours: Math.round((UI.minutes / 60) * 100) / 100,
+      plate,
+    },
   });
 }
 
@@ -1802,19 +2169,26 @@ function copyToClipboard(txt){
 
 function openInvoiceModal(inv, fromHistory=false){
   const issuedDate = new Date(inv.issuedAt || Date.now()).toLocaleString(UI.lang === 'vi' ? 'vi-VN' : 'en-US');
+  const isForfeited = inv.status === 'forfeited' || inv.forfeited;
+  const isBarrierFee = inv.barrierBaseFeeApplied;
+
   modalCard.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
       <div>
-        <span style="font-size:.64rem;font-weight:800;color:var(--pink);text-transform:uppercase;letter-spacing:.08em">
-          ${esc(T('einvoiceOfficial'))}
+        <span style="font-size:.64rem;font-weight:800;color:${isForfeited ? 'var(--red)' : 'var(--pink)'};text-transform:uppercase;letter-spacing:.08em">
+          ${esc(isForfeited ? T('forfeitReceiptTitle') : T('einvoiceOfficial'))}
         </span>
-        <h3 style="margin-top:2px;font-size:1.15rem">${esc(T('paySuccess'))}</h3>
+        <h3 style="margin-top:2px;font-size:1.15rem;color:${isForfeited ? '#c02b25' : 'inherit'}">
+          ${esc(isForfeited ? T('noShowTitle') : T('paySuccess'))}
+        </h3>
       </div>
       <button type="button" class="btn btn-ghost no-print" id="closeInvBtn" style="width:auto;padding:6px 10px;border-radius:10px;margin:0">
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
-    <div class="sub" style="margin-bottom:12px">${esc(T('einvoiceIssued'))}</div>
+    <div class="sub" style="margin-bottom:12px">
+      ${esc(isForfeited ? T('forfeitReason') : T('einvoiceIssued'))}
+    </div>
 
     <div style="background:#f8f9fd;border:1px solid #e2e4ee;border-radius:14px;padding:12px;margin-bottom:14px;font-size:.72rem">
       <div style="font-weight:800;color:var(--ink)">${esc(T('supplierName'))}</div>
@@ -1824,10 +2198,16 @@ function openInvoiceModal(inv, fromHistory=false){
 
     <div class="kv"><span>${esc(T('facility'))}</span><strong>${esc(inv.facilityName)}</strong></div>
     <div class="kv"><span>${esc(T('plate'))}</span><strong>${esc(inv.plate)}</strong></div>
-    <div class="kv"><span>${esc(T('duration'))}</span><strong>${fmtDuration(inv.elapsedHours)}</strong></div>
-    <div class="kv"><span>${esc(T('total'))}</span><strong>${fmtVND(inv.total)}</strong></div>
-    <div class="kv"><span>${esc(T('depDeduct'))}</span><strong>−${fmtVND(inv.deposit)}</strong></div>
-    <div class="kv total"><span>${esc(T('chargedVia', esc(inv.method)))}</span><strong>${fmtVND(inv.final)}</strong></div>
+    ${isForfeited ? `
+      <div class="kv"><span>${esc(T('holdDep'))}</span><strong>${fmtVND(inv.deposit)}</strong></div>
+      <div class="kv total"><span style="color:var(--red)">${esc(T('forfeitDeductNote'))}</span><strong style="color:var(--red)">−${fmtVND(inv.deposit)}</strong></div>
+    ` : `
+      <div class="kv"><span>${esc(T('duration'))}</span><strong>${fmtMinutesToHhMm(Math.round((inv.elapsedHours || 0) * 60))} (${fmtDuration(inv.elapsedHours || 0)})</strong></div>
+      ${isBarrierFee ? `<div class="kv"><span>${esc(T('barrierFee'))}</span><strong>${fmtVND(inv.barrierBaseFee || 10000)}</strong></div>` : ''}
+      <div class="kv"><span>${esc(T('total'))}</span><strong>${fmtVND(inv.total)}</strong></div>
+      <div class="kv"><span>${esc(T('depDeduct'))}</span><strong>−${fmtVND(inv.deposit)}</strong></div>
+      <div class="kv total"><span>${esc(T('chargedVia', esc(inv.method)))}</span><strong>${fmtVND(inv.final)}</strong></div>
+    `}
 
     <div class="invoice" style="margin-top:14px">
       <i class="fa-solid fa-file-invoice"></i>
@@ -2004,6 +2384,41 @@ function startTicker(){
   UI.tickTimer = setInterval(tick, 500);
 }
 
+function showNoShowAlertModal(forfeitInvoice, res){
+  const depositText = fmtVND(res.deposit || forfeitInvoice?.deposit || 0);
+  const facilityName = res.facilityName || forfeitInvoice?.facilityName || 'Bãi đỗ';
+  modalCard.innerHTML = `
+    <div style="text-align:center;padding:12px 0 6px">
+      <div style="width:52px;height:52px;border-radius:50%;background:#fee2e2;color:#dc2626;display:inline-flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:12px">
+        <i class="fa-solid fa-hourglass-end"></i>
+      </div>
+      <h3 style="font-size:1.15rem;margin-bottom:8px;color:#dc2626">${esc(T('noShowTitle'))}</h3>
+      <p style="font-size:.78rem;color:#4a5066;line-height:1.5;margin-bottom:14px;text-align:left">
+        ${esc(T('noShowDesc', facilityName, depositText))}
+      </p>
+      <div style="background:#fff1f0;border:1px solid #fecaca;border-radius:12px;padding:10px 12px;margin-bottom:14px;font-size:.72rem;text-align:left;color:#991b1b">
+        <i class="fa-solid fa-triangle-exclamation" style="margin-right:4px"></i>
+        ${esc(T('forfeitReceiptTitle'))}: <b>${depositText}</b>
+      </div>
+      <div style="display:flex;gap:8px">
+        ${forfeitInvoice ? `
+          <button class="btn btn-primary" id="viewForfeitBtn" style="flex:1;font-size:.8rem;padding:10px">
+            <i class="fa-solid fa-receipt"></i>${esc(T('viewPenaltyInvoice'))}
+          </button>` : ''}
+        <button class="btn btn-ghost" id="closeNoShowBtn" style="flex:1;font-size:.8rem;padding:10px">
+          ${esc(T('closeModal'))}
+        </button>
+      </div>
+    </div>`;
+  modal.classList.add('show');
+  const closeBtn = document.getElementById('closeNoShowBtn');
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  const viewBtn = document.getElementById('viewForfeitBtn');
+  if (viewBtn && forfeitInvoice) {
+    viewBtn.addEventListener('click', () => openInvoiceModal(forfeitInvoice, false));
+  }
+}
+
 function startHoldTicker(){
   stopTicker();
   if (!UI.reservation) return;
@@ -2011,7 +2426,7 @@ function startHoldTicker(){
     const s = Math.max(0, Math.floor(ms / 1000));
     return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   };
-  const tick = ()=>{
+  const tick = async ()=>{
     const el = document.getElementById('holdTimer');
     if (!el || !UI.reservation) return stopTicker();
     const rem = UI.reservation.expiresAt - serverNow();
@@ -2019,11 +2434,24 @@ function startHoldTicker(){
       el.textContent = '00:00';
       el.style.color = '#ff7b7b';
       stopTicker();
+      const expiredRes = UI.reservation;
       UI.reservation = null;
       saveLocalState();
       const chk = panelEl.querySelector('[data-act="checkin"]');
       if (chk) chk.disabled = true;
-      toast(T('holdExpired'), 3500);
+
+      toast(T('depositForfeitedToast', fmtVND(expiredRes.deposit || 0)), 4000);
+
+      let forfeitInvoice = null;
+      try {
+        const resp = await api(`/api/reservations/${expiredRes.id}/forfeit`, { method: 'POST' });
+        if (resp && resp.invoice) {
+          forfeitInvoice = resp.invoice;
+          saveInvoiceToHistory(forfeitInvoice);
+        }
+      } catch (err) { /* silent fail on network */ }
+
+      showNoShowAlertModal(forfeitInvoice, expiredRes);
       loadFacilities();
       return;
     }
