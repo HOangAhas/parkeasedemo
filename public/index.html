@@ -1099,37 +1099,40 @@ function renderPricingExplainerHTML(defaultOpen = false){
         <i class="fa-solid fa-chevron-down arr"></i>
       </div>
       <div class="pricing-body${openClass}" id="pricingBody">
+        <div style="font-size:.65rem;color:var(--pink);font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">
+          ${vi ? 'Báo cáo Đề án Kinh doanh EXE101 — Mục 3 & Mục IV' : 'EXE101 Venture Proposal — Section 3 & Section IV'}
+        </div>
         <div style="font-weight:700;color:var(--ink);margin-bottom:4px">
           ${esc(T('pricingFormulaHeader'))}
         </div>
         <div class="formula-box">
-          <b>Total</b> = min(max(10.000₫, Hours × Rate × Mult), Cap)<br/>
+          <b>Total</b> = min(max(10.000₫, Minutes/60 × Rate × Mult), Cap)<br/>
           <b>Due</b> = max(0, Total - Deposit)
         </div>
         <div class="pricing-cases">
           <div class="pc-item">
-            <span class="rule-pill">${vi ? 'Quy tắc 1: Đặt trước & Khấu trừ cọc 50%' : 'Rule 1: Reservation & 50% Deposit Deduction'}</span>
+            <span class="rule-pill">${vi ? 'Quy tắc 1: Đặt trước & Khấu trừ cọc (Deposit Conversion)' : 'Rule 1: Pre-Booking & Deposit Conversion'}</span>
             <span>${vi
-              ? 'Tài xế đặt giữ chỗ cần cọc 50% tiền dự kiến. Khi hoàn tất gửi xe (check-out), <b>100% tiền cọc được trừ thẳng</b> vào tổng hóa đơn thanh toán.'
-              : 'Drivers reserving a bay pay 50% planned deposit. At checkout, <b>100% of this deposit is deducted</b> from total invoice.'}</span>
+              ? 'Tài xế đặt giữ chỗ cần cọc trước giờ đầu tiên hoặc 50% tiền dự kiến (từ 30.000đ - 50.000đ). Khi check-out, <b>100% tiền cọc được trừ thẳng</b> vào hóa đơn đỗ xe (Net extra booking fee = 0đ, ứng dụng miễn phí trọn đời cho tài xế B2C).'
+              : 'Drivers reserving a bay place a hold deposit (1st hour rate or 30k-50k). At checkout, <b>100% of this deposit applies directly</b> to the parking bill (Net extra booking fee = 0 VND; B2C app is 100% free forever).'}</span>
           </div>
           <div class="pc-item">
-            <span class="rule-pill" style="background:#fff1f0;color:#c02b25">${vi ? 'Quy tắc 2: Giữ chỗ quá 30 phút không đến (Thu hồi cọc)' : 'Rule 2: 30-min No-Show (Deposit Forfeited)'}</span>
+            <span class="rule-pill" style="background:#fff1f0;color:#c02b25">${vi ? 'Quy tắc 2: Giữ chỗ quá 30 phút không đến (No-Show Split 70/30)' : 'Rule 2: 30-min No-Show (70/30 Forfeiture Split)'}</span>
             <span>${vi
-              ? 'Thời hạn giữ chỗ tối đa là <b>30 phút</b>. Nếu quá giờ tài xế không đến check-in, <b>100% tiền cọc sẽ bị thu hồi</b> để bù chi phí giữ slot và chống giữ chỗ ảo.'
-              : 'Bay holds expire after <b>30 minutes</b>. If no-show, <b>100% of deposit is forfeited</b> to compensate locked slot and prevent phantom reservations.'}</span>
+              ? 'Thời gian giữ chỗ tối đa là <b>30 phút</b>. Nếu quá giờ tài xế không đến check-in, <b>100% tiền cọc sẽ bị thu hồi</b> để bù đắp chi phí giữ chỗ: <b>70% chi trả bồi thường cho chủ bãi đỗ</b> và <b>30% phí xử lý hệ thống ParkEase</b>, xuất biên lai phạt theo NĐ 123.'
+              : 'Bay holds expire after <b>30 minutes</b>. If no-show, <b>100% of deposit is forfeited</b>: <b>70% paid out to operator</b> to compensate the locked bay, and <b>30% retained as platform processing fee</b> under Decree 123.'}</span>
           </div>
           <div class="pc-item">
-            <span class="rule-pill" style="background:#e6f8ee;color:#0f8a4b">${vi ? 'Quy tắc 3: Vào ra ngay lập tức (Phí mở barie tối thiểu)' : 'Rule 3: Immediate Exit (Base Barrier Unlock Fee)'}</span>
+            <span class="rule-pill" style="background:#e6f8ee;color:#0f8a4b">${vi ? 'Quy tắc 3: Vào ra ngay lập tức (Base Barrier Unlock Fee)' : 'Rule 3: Immediate Exit (Base Barrier Unlock Fee)'}</span>
             <span>${vi
-              ? 'Trường hợp xe vào bãi rồi ra ngay (0 phút hoặc &lt; 5 phút), hệ thống áp dụng <b>Phí mở barie tối thiểu = 10.000 VND</b> (tương tự giá mở cửa taxi) bù đắp chi phí nâng hạ barie và nhận diện ANPR.'
-              : 'Cars entering and leaving immediately (&lt; 5 mins) are charged a <b>Minimum Barrier Unlock Fee = 10,000 VND</b> (flag-fall rate) covering ANPR gate ops.'}</span>
+              ? 'Trường hợp xe vừa qua barrier vào bãi rồi ra ngay tức thì (&lt; 5 phút), hệ thống áp dụng <b>Phí mở barie tối thiểu = 10.000 VND</b> (tương tự giá mở cửa taxi) bù đắp chi phí nâng hạ barie tự động và nhận diện AI-ANPR dưới 0.5s.'
+              : 'Cars entering and leaving immediately (&lt; 5 mins) are charged a <b>Minimum Barrier Unlock Fee = 10,000 VND</b> (flag-fall rate) covering sub-0.5s AI-ANPR gate and barrier operations.'}</span>
           </div>
         </div>
         <div style="margin-top:8px;font-size:.66rem;color:#7c829c;display:flex;gap:8px;flex-wrap:wrap">
-          <span>• ${vi ? 'Cao điểm (07:00-09:00, 16:30-19:00): Hệ số 1.5x' : 'Peak (07:00-09:00, 16:30-19:00): Mult 1.5x'}</span>
-          <span>• ${vi ? 'Thấp điểm: Hệ số 0.7x' : 'Off-peak: Mult 0.7x'}</span>
-          <span>• ${vi ? 'Giá trần ngày: 120.000₫ - 150.000₫' : 'Daily cap: 120,000₫ - 150,000₫'}</span>
+          <span>• ${vi ? 'Cao điểm (07:00-09:00, 16:30-19:00): Hệ số 1.5x (QĐ 5794/QĐ-UBND)' : 'Peak (07:00-09:00, 16:30-19:00): Mult 1.5x (Hanoi Dec 5794)'}</span>
+          <span>• ${vi ? 'Thấp điểm: Giảm 30% (Hệ số 0.7x)' : 'Off-peak: 30% discount (Mult 0.7x)'}</span>
+          <span>• ${vi ? 'B2B Take-rate: 10%–12% | B2G Kế hoạch 198: 12%' : 'B2B Take-rate: 10%–12% | B2G Plan 198: 12%'}</span>
         </div>
       </div>
     </div>`;
@@ -2200,6 +2203,8 @@ function openInvoiceModal(inv, fromHistory=false){
     <div class="kv"><span>${esc(T('plate'))}</span><strong>${esc(inv.plate)}</strong></div>
     ${isForfeited ? `
       <div class="kv"><span>${esc(T('holdDep'))}</span><strong>${fmtVND(inv.deposit)}</strong></div>
+      <div class="kv"><span>${UI.lang === 'vi' ? 'Bồi thường chủ bãi đỗ (70%)' : 'Operator compensation (70%)'}</span><strong>${fmtVND(inv.operatorShare || Math.round(inv.deposit * 0.7))}</strong></div>
+      <div class="kv"><span>${UI.lang === 'vi' ? 'Phí xử lý ParkEase (30%)' : 'ParkEase platform fee (30%)'}</span><strong>${fmtVND(inv.platformShare || Math.round(inv.deposit * 0.3))}</strong></div>
       <div class="kv total"><span style="color:var(--red)">${esc(T('forfeitDeductNote'))}</span><strong style="color:var(--red)">−${fmtVND(inv.deposit)}</strong></div>
     ` : `
       <div class="kv"><span>${esc(T('duration'))}</span><strong>${fmtMinutesToHhMm(Math.round((inv.elapsedHours || 0) * 60))} (${fmtDuration(inv.elapsedHours || 0)})</strong></div>

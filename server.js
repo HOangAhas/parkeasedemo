@@ -221,11 +221,15 @@ app.delete('/api/reservations/:id', async (req, res) => {
 
 function issueForfeitInvoice(db, r, now = Date.now()){
   const code = 'PE-NOSHOW-' + new Date(now).getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(1000 + Math.random() * 9000);
+  const operatorShare = Math.round(r.deposit * 0.7);
+  const platformShare = Math.round(r.deposit * 0.3);
   const invoice = {
     id: rid('inv'),
     lookupCode: code,
     decree: '123/2020/NĐ-CP',
     type: 'no_show_penalty',
+    status: 'forfeited',
+    forfeited: true,
     issuedAt: new Date(now).toISOString(),
     facilityName: r.facilityName,
     plate: r.plate,
@@ -240,8 +244,10 @@ function issueForfeitInvoice(db, r, now = Date.now()){
     total: r.deposit,
     deposit: r.deposit,
     final: r.deposit,
-    note: 'Thu hồi 100% tiền đặt cọc giữ chỗ do quá 30 phút không đến nhận chỗ (Chính sách No-show trong Pricing Model)',
-    formula: `Thu hồi cọc: ${r.deposit} VND vì quá thời gian giữ chỗ 30 phút`,
+    operatorShare,
+    platformShare,
+    note: 'Thu hồi 100% tiền đặt cọc giữ chỗ do quá 30 phút không đến nhận chỗ (Chính sách No-show trong Báo cáo EXE101 Mục 3.2: 70% đền bù chủ bãi, 30% phí xử lý ParkEase)',
+    formula: `Thu hồi cọc: ${r.deposit.toLocaleString('vi-VN')} VND (Chủ bãi 70%: ${operatorShare.toLocaleString('vi-VN')}đ, ParkEase 30%: ${platformShare.toLocaleString('vi-VN')}đ)`,
   };
   db.invoices.push(invoice);
   return invoice;
