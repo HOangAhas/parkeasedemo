@@ -17,22 +17,34 @@ app.use(express.static(path.join(__dirname, 'public')));
 const FACILITIES = [
   { id:'vincom',  name:'Vincom Center Bà Triệu', addr:'191 Bà Triệu, Hai Bà Trưng, Hà Nội',
     lat:21.0116, lng:105.8497, total:120, avail:45, type:'basement', ev:true,
-    hours:'06:00–23:00', rate:20000, cap:120000 },
+    hours:'06:00–23:00', rate:20000, cap:120000,
+    maxHeight:'2.1m', carEntrance:'Cổng ô tô: Mặt phố Bùi Thị Xuân',
+    entryNote:'Camera AI nhận diện biển số & Barie tự động B2-B4' },
   { id:'lotte',   name:'Lotte Center Cầu Giấy', addr:'54 Liễu Giai, Ba Đình, Hà Nội',
     lat:21.0318, lng:105.8130, total:200, avail:18, type:'basement', ev:true,
-    hours:'06:00–23:00', rate:22000, cap:130000 },
+    hours:'06:00–23:00', rate:22000, cap:130000,
+    maxHeight:'2.2m', carEntrance:'Cổng ô tô: Mặt phố Đào Tấn & Liễu Giai',
+    entryNote:'Làn riêng ô tô B3-B5 có hướng dẫn đỗ xe điện tử' },
   { id:'trangtien', name:'Tràng Tiền Plaza', addr:'24 Hai Bà Trưng, Hoàn Kiếm, Hà Nội',
     lat:21.0245, lng:105.8528, total:80, avail:5, type:'surface', ev:false,
-    hours:'07:00–22:00', rate:25000, cap:140000 },
+    hours:'07:00–22:00', rate:25000, cap:140000,
+    maxHeight:'Không giới hạn', carEntrance:'Lối vào ô tô: Mặt phố Hai Bà Trưng',
+    entryNote:'Bãi ngoài trời trung tâm, bảo vệ hướng dẫn vị trí' },
   { id:'nhon',    name:'Nhổn Metro Park & Ride', addr:'Quốc lộ 32, Bắc Từ Liêm, Hà Nội',
     lat:21.0532, lng:105.7345, total:300, avail:210, type:'surface', ev:true,
-    hours:'05:00–24:00', rate:10000, cap:60000 },
+    hours:'05:00–24:00', rate:10000, cap:60000,
+    maxHeight:'Không giới hạn', carEntrance:'Làn ô tô riêng: Cổng chính QL32 ga Metro',
+    entryNote:'Trạm sạc nhanh VinFast + Bãi trung chuyển xe ô tô' },
   { id:'opera',   name:'Hanoi Opera House Curbside', addr:'01 Tràng Tiền, Hoàn Kiếm, Hà Nội',
     lat:21.0240, lng:105.8578, total:40, avail:12, type:'curbside', ev:false,
-    hours:'07:00–22:00', rate:18000, cap:110000 },
+    hours:'07:00–22:00', rate:18000, cap:110000,
+    maxHeight:'Không giới hạn', carEntrance:'Điểm đỗ ô tô ven đường: Vườn hoa Nhà hát Lớn',
+    entryNote:'Đỗ xe ven đường thanh toán điện tử không dùng tiền mặt' },
   { id:'daewoo',  name:'Hanoi Daewoo Hotel', addr:'360 Kim Mã, Ba Đình, Hà Nội',
     lat:21.0305, lng:105.8205, total:150, avail:60, type:'basement', ev:true,
-    hours:'06:00–22:00', rate:21000, cap:125000 },
+    hours:'06:00–22:00', rate:21000, cap:125000,
+    maxHeight:'2.0m', carEntrance:'Lối xuống hầm ô tô: Cổng số 2 mặt đường Kim Mã',
+    entryNote:'Camera ANPR tự động B1-B2 & Trạm sạc ô tô điện' },
 ];
 
 function loadDB(){
@@ -306,6 +318,18 @@ app.post('/api/sessions/:id/checkout', async (req, res) => {
   saveDB(db);
 
   res.json({ ok: true, invoice, session: s });
+});
+
+/* Invoices list */
+app.get('/api/invoices', (req, res) => {
+  const db = loadDB();
+  let list = db.invoices || [];
+  if (req.query.plate) {
+    const p = req.query.plate.trim().toUpperCase();
+    list = list.filter(i => (i.plate || '').toUpperCase() === p);
+  }
+  const recent = [...list].reverse().slice(0, 30);
+  res.json({ ok: true, invoices: recent });
 });
 
 /* Invoice lookup */
